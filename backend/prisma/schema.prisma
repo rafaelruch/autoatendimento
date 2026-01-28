@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id           String    @id @default(uuid())
+  slug         String    @unique
+  name         String
+  logo         String?
+  primaryColor String    @default("#16a34a")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Payment Configuration
+  paymentProvider   PaymentProvider @default(MERCADOPAGO)
+
+  // Mercado Pago Settings
+  mpAccessToken     String?
+  mpPublicKey       String?
+  mpPointDeviceId   String?   // ID do terminal Point
+  mpPointEnabled    Boolean   @default(false)
+
+  // PagBank Settings
+  pbToken           String?
+  pbEmail           String?
+  pbPointSerial     String?   // Serial da Moderninha
+  pbPointEnabled    Boolean   @default(false)
+
+  products  Product[]
+  orders    Order[]
+  users     User[]
+  customers Customer[]
+}
+
+// Cliente do mercado autônomo
+model Customer {
+  id            String    @id @default(uuid())
+
+  // Dados pessoais
+  name          String              // Nome completo
+  cpf           String              // CPF (somente números)
+  rg            String?             // RG (opcional)
+  phone         String              // Telefone com DDD
+  email         String?             // Email (opcional)
+  photo         String?             // URL da foto
+
+  // Endereço no condomínio
+  condominium   String              // Nome do condomínio
+  block         String?             // Bloco/Torre (opcional)
+  unit          String              // Apartamento/Unidade
+
+  // Controle
+  active        Boolean   @default(true)
+  notes         String?             // Observações
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relacionamentos
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id])
+  orders        Order[]
+
+  // CPF único por loja
+  @@unique([cpf, storeId])
+  @@index([phone])
+  @@index([condominium])
+}
+
+enum PaymentProvider {
+  MERCADOPAGO
+  PAGBANK
+  BOTH
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  storeId   String?
+  store     Store?   @relation(fields: [storeId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  SUPER_ADMIN
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  image       String?
+  category    String?
+  stock       Int         @default(0)
+  barcode     String?
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  storeId     String
+  store       Store       @relation(fields: [storeId], references: [id])
+  orderItems  OrderItem[]
+
+  @@unique([barcode, storeId])
+}
+
+model Order {
+  id              String           @id @default(uuid())
+  status          OrderStatus      @default(PENDING)
+  total           Decimal          @db.Decimal(10, 2)
+  paymentId       String?
+  paymentMethod   String?
+  paymentProvider PaymentProvider?
+  pointPayment    Boolean          @default(false)  // Se foi pago na maquininha
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  storeId         String
+  store           Store            @relation(fields: [storeId], references: [id])
+  items           OrderItem[]
+
+  // Cliente (opcional - para mercado autônomo)
+  customerId      String?
+  customer        Customer?        @relation(fields: [customerId], references: [id])
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
