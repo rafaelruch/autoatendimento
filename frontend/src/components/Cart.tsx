@@ -67,12 +67,21 @@ export function Cart() {
           </span>
         </div>
 
-        <Link
-          to={`/${slug}/checkout`}
-          className="block w-full text-white text-center font-bold py-4 rounded-lg transition-colors text-lg btn-primary"
-        >
-          Finalizar Compra
-        </Link>
+        <div className="space-y-3">
+          <Link
+            to={`/${slug}/checkout`}
+            className="block w-full text-white text-center font-bold py-4 rounded-lg transition-colors text-lg btn-primary"
+          >
+            Finalizar Compra
+          </Link>
+
+          <Link
+            to={`/${slug}`}
+            className="block w-full text-center font-medium py-3 rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Continuar Comprando
+          </Link>
+        </div>
       </div>
     </div>
   );
