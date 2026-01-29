@@ -64,17 +64,21 @@ export class PagBankService implements IPaymentService {
     config: StorePaymentConfig
   ): Promise<PaymentResult> {
     try {
-      const token = config.pbToken || process.env.PAGBANK_TOKEN;
+      const rawToken = config.pbToken || process.env.PAGBANK_TOKEN;
 
-      if (!token) {
+      if (!rawToken) {
         return { success: false, error: 'PagBank não configurado para esta loja' };
       }
+
+      // Limpar o token de espacos extras
+      const token = rawToken.trim();
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
       console.log('[PagBank] Iniciando criação de pagamento');
       console.log('[PagBank] API URL:', PAGBANK_API_URL);
+      console.log('[PagBank] Token length:', token.length);
       console.log('[PagBank] Token (primeiros 20 chars):', token.substring(0, 20) + '...');
 
       // Usar endpoint de checkout para pagamento online com redirect
@@ -167,12 +171,14 @@ export class PagBankService implements IPaymentService {
     config: StorePaymentConfig
   ): Promise<PointPaymentResult> {
     try {
-      const token = config.pbToken || process.env.PAGBANK_TOKEN;
+      const rawToken = config.pbToken || process.env.PAGBANK_TOKEN;
       const deviceSerial = config.pbPointSerial || process.env.PAGBANK_POINT_DEVICE_SERIAL;
 
-      if (!token) {
+      if (!rawToken) {
         return { success: false, error: 'PagBank não configurado' };
       }
+
+      const token = rawToken.trim();
 
       if (!deviceSerial) {
         return { success: false, error: 'Terminal Moderninha não configurado' };
@@ -235,11 +241,13 @@ export class PagBankService implements IPaymentService {
     config: StorePaymentConfig
   ): Promise<PaymentStatusResult> {
     try {
-      const token = config.pbToken || process.env.PAGBANK_TOKEN;
+      const rawToken = config.pbToken || process.env.PAGBANK_TOKEN;
 
-      if (!token) {
+      if (!rawToken) {
         return { status: 'PENDING' };
       }
+
+      const token = rawToken.trim();
 
       const response = await fetch(`${PAGBANK_API_URL}/orders/${orderId}`, {
         headers: this.getHeaders(token),
@@ -301,11 +309,13 @@ export class PagBankService implements IPaymentService {
     config: StorePaymentConfig
   ): Promise<PaymentResult> {
     try {
-      const token = config.pbToken || process.env.PAGBANK_TOKEN;
+      const rawToken = config.pbToken || process.env.PAGBANK_TOKEN;
 
-      if (!token) {
+      if (!rawToken) {
         return { success: false, error: 'PagBank não configurado' };
       }
+
+      const token = rawToken.trim();
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
