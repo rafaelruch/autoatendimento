@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { createError } from '../middlewares/errorHandler.js';
 
 const prisma = new PrismaClient();
@@ -111,6 +112,10 @@ export async function createStore(req: Request, res: Response, next: NextFunctio
       pbEmail,
       pbPointSerial,
       pbPointEnabled,
+      // Admin user settings (optional)
+      adminEmail,
+      adminPassword,
+      adminName,
     } = req.body;
 
     if (!slug || !name) {
@@ -122,31 +127,73 @@ export async function createStore(req: Request, res: Response, next: NextFunctio
       throw createError('Slug deve conter apenas letras minúsculas, números e hífens', 400);
     }
 
-    const store = await prisma.store.create({
-      data: {
-        slug,
-        name,
-        logo,
-        primaryColor: primaryColor || '#16a34a',
-        // Payment settings
-        paymentProvider: paymentProvider || 'MERCADOPAGO',
-        mpAccessToken,
-        mpPublicKey,
-        mpPointDeviceId,
-        mpPointEnabled: mpPointEnabled || false,
-        pbToken,
-        pbEmail,
-        pbPointSerial,
-        pbPointEnabled: pbPointEnabled || false,
-      },
+    // Check if admin email already exists
+    if (adminEmail) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: adminEmail },
+      });
+      if (existingUser) {
+        throw createError('Email do administrador já está em uso', 400);
+      }
+    }
+
+    // Use transaction to create store and user together
+    const result = await prisma.$transaction(async (tx) => {
+      // Create store
+      const store = await tx.store.create({
+        data: {
+          slug,
+          name,
+          logo,
+          primaryColor: primaryColor || '#16a34a',
+          // Payment settings
+          paymentProvider: paymentProvider || 'MERCADOPAGO',
+          mpAccessToken,
+          mpPublicKey,
+          mpPointDeviceId,
+          mpPointEnabled: mpPointEnabled || false,
+          pbToken,
+          pbEmail,
+          pbPointSerial,
+          pbPointEnabled: pbPointEnabled || false,
+        },
+      });
+
+      // Create admin user if credentials provided
+      let adminUser = null;
+      if (adminEmail && adminPassword) {
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        adminUser = await tx.user.create({
+          data: {
+            email: adminEmail,
+            password: hashedPassword,
+            name: adminName || name + ' Admin',
+            role: 'ADMIN',
+            storeId: store.id,
+          },
+        });
+      }
+
+      return { store, adminUser };
     });
 
     // Return without sensitive data
-    const { mpAccessToken: _, pbToken: __, ...safeStore } = store;
-    res.status(201).json(safeStore);
+    const { mpAccessToken: _, pbToken: __, ...safeStore } = result.store;
+    res.status(201).json({
+      ...safeStore,
+      adminUser: result.adminUser ? {
+        id: result.adminUser.id,
+        email: result.adminUser.email,
+        name: result.adminUser.name,
+      } : null,
+    });
   } catch (error: any) {
     if (error.code === 'P2002') {
-      next(createError('Slug já está em uso', 400));
+      if (error.meta?.target?.includes('email')) {
+        next(createError('Email do administrador já está em uso', 400));
+      } else {
+        next(createError('Slug já está em uso', 400));
+      }
     } else {
       next(error);
     }
@@ -228,6 +275,141 @@ export async function deleteStore(req: Request, res: Response, next: NextFunctio
   } catch (error: any) {
     if (error.code === 'P2025') {
       next(createError('Loja não encontrada', 404));
+    } else {
+      next(error);
+    }
+  }
+}
+
+// Super Admin: Get users by store
+export async function getStoreUsers(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { storeId } = req.params;
+
+    const users = await prisma.user.findMany({
+      where: { storeId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Super Admin: Create user for store
+export async function createStoreUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { storeId } = req.params;
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      throw createError('Email, senha e nome são obrigatórios', 400);
+    }
+
+    // Check if store exists
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+    });
+
+    if (!store) {
+      throw createError('Loja não encontrada', 404);
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw createError('Email já está em uso', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: 'ADMIN',
+        storeId,
+      },
+    });
+
+    res.status(201).json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      next(createError('Email já está em uso', 400));
+    } else {
+      next(error);
+    }
+  }
+}
+
+// Super Admin: Update user
+export async function updateStoreUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { userId } = req.params;
+    const { email, password, name } = req.body;
+
+    const updateData: { email?: string; password?: string; name?: string } = {};
+
+    if (email) updateData.email = email;
+    if (name) updateData.name = name;
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      next(createError('Email já está em uso', 400));
+    } else if (error.code === 'P2025') {
+      next(createError('Usuário não encontrado', 404));
+    } else {
+      next(error);
+    }
+  }
+}
+
+// Super Admin: Delete user
+export async function deleteStoreUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { userId } = req.params;
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.status(204).send();
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      next(createError('Usuário não encontrado', 404));
     } else {
       next(error);
     }

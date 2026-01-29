@@ -7,6 +7,10 @@ import {
   createStore,
   updateStore,
   deleteStore,
+  getStoreUsers,
+  createStoreUser,
+  updateStoreUser,
+  deleteStoreUser,
 } from '../controllers/storeController.js';
 
 export const superadminRoutes = Router();
@@ -28,3 +32,9 @@ superadminRoutes.get('/stores', getStores);
 superadminRoutes.post('/stores', createStore);
 superadminRoutes.put('/stores/:id', updateStore);
 superadminRoutes.delete('/stores/:id', deleteStore);
+
+// User management (per store)
+superadminRoutes.get('/stores/:storeId/users', getStoreUsers);
+superadminRoutes.post('/stores/:storeId/users', createStoreUser);
+superadminRoutes.put('/users/:userId', updateStoreUser);
+superadminRoutes.delete('/users/:userId', deleteStoreUser);

@@ -133,12 +133,34 @@ export const adminGetDashboard = () => api.get<DashboardData>('/admin/dashboard'
 
 // Super Admin - Stores
 export const superadminGetStores = () => api.get<Store[]>('/superadmin/stores');
-export const superadminCreateStore = (data: Partial<Store>) =>
+export const superadminCreateStore = (data: Partial<Store> & {
+  adminEmail?: string;
+  adminPassword?: string;
+  adminName?: string;
+}) =>
   api.post<Store>('/superadmin/stores', data);
 export const superadminUpdateStore = (id: string, data: Partial<Store>) =>
   api.put<Store>(`/superadmin/stores/${id}`, data);
 export const superadminDeleteStore = (id: string) =>
   api.delete(`/superadmin/stores/${id}`);
+
+// Super Admin - Users (per store)
+export interface StoreUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  createdAt: string;
+}
+
+export const superadminGetStoreUsers = (storeId: string) =>
+  api.get<StoreUser[]>(`/superadmin/stores/${storeId}/users`);
+export const superadminCreateStoreUser = (storeId: string, data: { email: string; password: string; name: string }) =>
+  api.post<StoreUser>(`/superadmin/stores/${storeId}/users`, data);
+export const superadminUpdateStoreUser = (userId: string, data: { email?: string; password?: string; name?: string }) =>
+  api.put<StoreUser>(`/superadmin/users/${userId}`, data);
+export const superadminDeleteStoreUser = (userId: string) =>
+  api.delete(`/superadmin/users/${userId}`);
 
 // Upload
 export const uploadLogo = (file: File) => {

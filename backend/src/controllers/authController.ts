@@ -42,6 +42,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
         email: user.email,
         name: user.name,
         role: user.role,
+        storeId: user.storeId,
       },
     });
   } catch (error) {

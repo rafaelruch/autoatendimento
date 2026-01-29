@@ -5,12 +5,17 @@ import {
   superadminCreateStore,
   superadminUpdateStore,
   superadminDeleteStore,
+  superadminGetStoreUsers,
+  superadminCreateStoreUser,
+  superadminUpdateStoreUser,
+  superadminDeleteStoreUser,
   uploadLogo,
+  type StoreUser,
 } from '../../services/api';
 import type { Store, PaymentProvider } from '../../types';
 import toast from 'react-hot-toast';
 
-type TabType = 'general' | 'payment';
+type TabType = 'general' | 'payment' | 'users';
 
 interface StoreFormData {
   name: string;
@@ -27,6 +32,10 @@ interface StoreFormData {
   pbEmail: string;
   pbPointSerial: string;
   pbPointEnabled: boolean;
+  // Admin user (for new stores)
+  adminEmail: string;
+  adminPassword: string;
+  adminName: string;
 }
 
 const initialFormData: StoreFormData = {
@@ -43,6 +52,9 @@ const initialFormData: StoreFormData = {
   pbEmail: '',
   pbPointSerial: '',
   pbPointEnabled: false,
+  adminEmail: '',
+  adminPassword: '',
+  adminName: '',
 };
 
 export function SuperAdminStores() {
@@ -56,8 +68,17 @@ export function SuperAdminStores() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [showMpToken, setShowMpToken] = useState(false);
   const [showPbToken, setShowPbToken] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // User management state
+  const [storeUsers, setStoreUsers] = useState<StoreUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<StoreUser | null>(null);
+  const [userFormData, setUserFormData] = useState({ email: '', password: '', name: '' });
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -105,16 +126,23 @@ export function SuperAdminStores() {
         pbEmail: store.pbEmail || '',
         pbPointSerial: store.pbPointSerial || '',
         pbPointEnabled: store.pbPointEnabled || false,
+        adminEmail: '',
+        adminPassword: '',
+        adminName: '',
       });
       setLogoPreview(store.logo || null);
+      // Fetch users for this store
+      fetchStoreUsers(store.id);
     } else {
       setEditingStore(null);
       setFormData(initialFormData);
       setLogoPreview(null);
+      setStoreUsers([]);
     }
     setActiveTab('general');
     setShowMpToken(false);
     setShowPbToken(false);
+    setShowAdminPassword(false);
     setShowModal(true);
   };
 
@@ -180,7 +208,11 @@ export function SuperAdminStores() {
     e.preventDefault();
 
     // Build data to submit (only include tokens if they have values)
-    const submitData: Partial<StoreFormData> = {
+    const submitData: Partial<StoreFormData> & {
+      adminEmail?: string;
+      adminPassword?: string;
+      adminName?: string;
+    } = {
       name: formData.name,
       slug: formData.slug,
       logo: formData.logo,
@@ -202,13 +234,20 @@ export function SuperAdminStores() {
       submitData.pbToken = formData.pbToken;
     }
 
+    // Include admin user data for new stores
+    if (!editingStore && formData.adminEmail && formData.adminPassword) {
+      submitData.adminEmail = formData.adminEmail;
+      submitData.adminPassword = formData.adminPassword;
+      submitData.adminName = formData.adminName || formData.name + ' Admin';
+    }
+
     try {
       if (editingStore) {
         await superadminUpdateStore(editingStore.id, submitData);
         toast.success('Loja atualizada');
       } else {
         await superadminCreateStore(submitData);
-        toast.success('Loja criada');
+        toast.success('Loja criada' + (formData.adminEmail ? ' com administrador' : ''));
       }
       setShowModal(false);
       fetchStores();
@@ -257,6 +296,69 @@ export function SuperAdminStores() {
         return 'Ambos';
       default:
         return provider;
+    }
+  };
+
+  // User management functions
+  const fetchStoreUsers = async (storeId: string) => {
+    setLoadingUsers(true);
+    try {
+      const response = await superadminGetStoreUsers(storeId);
+      setStoreUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setStoreUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const openUserModal = (user?: StoreUser) => {
+    if (user) {
+      setEditingUser(user);
+      setUserFormData({ email: user.email, password: '', name: user.name });
+    } else {
+      setEditingUser(null);
+      setUserFormData({ email: '', password: '', name: '' });
+    }
+    setShowUserPassword(false);
+    setShowUserModal(true);
+  };
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStore) return;
+
+    try {
+      if (editingUser) {
+        const updateData: { email?: string; password?: string; name?: string } = {};
+        if (userFormData.email !== editingUser.email) updateData.email = userFormData.email;
+        if (userFormData.password) updateData.password = userFormData.password;
+        if (userFormData.name !== editingUser.name) updateData.name = userFormData.name;
+
+        await superadminUpdateStoreUser(editingUser.id, updateData);
+        toast.success('Usuário atualizado');
+      } else {
+        await superadminCreateStoreUser(editingStore.id, userFormData);
+        toast.success('Usuário criado');
+      }
+      setShowUserModal(false);
+      fetchStoreUsers(editingStore.id);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erro ao salvar usuário');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+    if (!editingStore) return;
+
+    try {
+      await superadminDeleteStoreUser(userId);
+      toast.success('Usuário excluído');
+      fetchStoreUsers(editingStore.id);
+    } catch (error) {
+      toast.error('Erro ao excluir usuário');
     }
   };
 
@@ -470,6 +572,17 @@ export function SuperAdminStores() {
                   }`}
                 >
                   Pagamentos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('users')}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'users'
+                      ? 'border-gray-900 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Usuários
                 </button>
               </div>
             </div>
@@ -822,11 +935,235 @@ export function SuperAdminStores() {
                 </div>
               )}
 
+              {/* Users Tab */}
+              {activeTab === 'users' && (
+                <div className="p-6 space-y-4">
+                  {editingStore ? (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-800">
+                          Usuários da Loja
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => openUserModal()}
+                          className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors flex items-center gap-1"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Novo Usuário
+                        </button>
+                      </div>
+
+                      {loadingUsers ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
+                        </div>
+                      ) : storeUsers.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <svg className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <p>Nenhum usuário cadastrado</p>
+                          <p className="text-sm">Clique em "Novo Usuário" para adicionar</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {storeUsers.map((user) => (
+                            <div
+                              key={user.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            >
+                              <div>
+                                <p className="font-medium text-gray-800">{user.name}</p>
+                                <p className="text-sm text-gray-500">{user.email}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openUserModal(user)}
+                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  title="Editar"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="text-red-600 hover:text-red-800 p-1"
+                                  title="Excluir"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-gray-600 text-sm">
+                        Crie um administrador para esta loja (opcional). Você também pode adicionar usuários depois.
+                      </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome do Administrador
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.adminName}
+                          onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500"
+                          placeholder="Nome do administrador"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email do Administrador
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.adminEmail}
+                          onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500"
+                          placeholder="admin@loja.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Senha do Administrador
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showAdminPassword ? 'text' : 'password'}
+                            value={formData.adminPassword}
+                            onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500 pr-10"
+                            placeholder="Senha segura"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowAdminPassword(!showAdminPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                          >
+                            {showAdminPassword ? (
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      {formData.adminEmail && !formData.adminPassword && (
+                        <p className="text-amber-600 text-sm">
+                          Preencha a senha para criar o administrador
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Form Actions */}
               <div className="p-6 border-t flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Modal */}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-lg font-semibold">
+                {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+              </h3>
+            </div>
+            <form onSubmit={handleUserSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  value={userFormData.name}
+                  onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={userFormData.email}
+                  onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha {editingUser ? '(deixe vazio para manter)' : '*'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUserPassword ? 'text' : 'password'}
+                    value={userFormData.password}
+                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                    required={!editingUser}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPassword(!showUserPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  >
+                    {showUserPassword ? (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowUserModal(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
