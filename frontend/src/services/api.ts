@@ -11,6 +11,7 @@ import type {
   Customer,
   CustomerListResponse,
   CustomerStats,
+  FinancialReport,
 } from '../types';
 
 const api = axios.create({
@@ -218,5 +219,17 @@ export const adminGetCustomerCondominiums = (storeId: string) =>
 
 export const adminGetCustomerStats = (storeId: string) =>
   api.get<CustomerStats>(`/customers/stats?storeId=${storeId}`);
+
+// Admin - Financial Reports
+export const adminGetFinancialReport = (startDate: string, endDate: string) =>
+  api.get<FinancialReport>('/admin/reports/financial', {
+    params: { startDate, endDate },
+  });
+
+export const adminExportFinancialReport = (startDate: string, endDate: string) => {
+  const token = localStorage.getItem('admin_token');
+  const baseUrl = import.meta.env.VITE_API_URL || '/api';
+  window.open(`${baseUrl}/admin/reports/financial/export?startDate=${startDate}&endDate=${endDate}&token=${token}`, '_blank');
+};
 
 export default api;

@@ -11,6 +11,7 @@ import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminProducts } from './pages/admin/Products';
 import { AdminOrders } from './pages/admin/Orders';
 import { AdminCustomers } from './pages/admin/Customers';
+import { AdminReports } from './pages/admin/Reports';
 import { SuperAdminLogin } from './pages/superadmin/Login';
 import { SuperAdminDashboard } from './pages/superadmin/Dashboard';
 import { SuperAdminStores } from './pages/superadmin/Stores';
@@ -72,6 +73,7 @@ function App() {
           <Route path="/admin/products" element={<AdminProducts />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/customers" element={<AdminCustomers />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
         </Routes>
         <Toaster position="top-right" />
       </CartProvider>

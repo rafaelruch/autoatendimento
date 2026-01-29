@@ -129,3 +129,28 @@ export interface CustomerListResponse {
   data: Customer[];
   pagination: CustomerPagination;
 }
+
+export interface FinancialReport {
+  summary: {
+    totalRevenue: number;
+    paidRevenue: number;
+    pendingRevenue: number;
+    orderCount: number;
+    averageTicket: number;
+  };
+  byStatus: Array<{
+    status: OrderStatus;
+    count: number;
+    total: number;
+  }>;
+  byPaymentMethod: Array<{
+    method: string;
+    count: number;
+    total: number;
+  }>;
+  byDay: Array<{
+    date: string;
+    count: number;
+    total: number;
+  }>;
+}

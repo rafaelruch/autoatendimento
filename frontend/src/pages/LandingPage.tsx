@@ -41,7 +41,7 @@ export function LandingPage() {
               Acessar Painel
             </Link>
             <a
-              href="https://wa.me/5511999999999"
+              href="https://wa.me/5562996918770?text=Tenho%20interesse%20no%20servi%C3%A7o%20de%20mercado%20aut%C3%B4nomo%20da%20RUCH."
               target="_blank"
               rel="noopener noreferrer"
               className="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition-colors"

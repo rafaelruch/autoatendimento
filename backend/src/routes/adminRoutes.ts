@@ -11,6 +11,7 @@ import {
 } from '../controllers/productController.js';
 import { getOrders } from '../controllers/orderController.js';
 import { uploadCsv } from '../controllers/uploadController.js';
+import { getFinancialReport, exportFinancialReport } from '../controllers/reportController.js';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +32,10 @@ adminRoutes.post('/products/import/:storeId', uploadCsv.single('file'), importPr
 
 // Orders
 adminRoutes.get('/orders', getOrders);
+
+// Reports
+adminRoutes.get('/reports/financial', getFinancialReport);
+adminRoutes.get('/reports/financial/export', exportFinancialReport);
 
 // Dashboard
 adminRoutes.get('/dashboard', async (_req, res, next) => {
