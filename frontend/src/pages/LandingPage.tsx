@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { superadminGetStores } from '../services/api';
+import { getActiveStores } from '../services/api';
 import type { Store } from '../types';
 
 export function LandingPage() {
@@ -10,8 +10,8 @@ export function LandingPage() {
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        const response = await superadminGetStores();
-        setStores(response.data.filter((s: any) => s.active));
+        const response = await getActiveStores();
+        setStores(response.data);
       } catch (error) {
         console.error('Error fetching stores:', error);
       } finally {

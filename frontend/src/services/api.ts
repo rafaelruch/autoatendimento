@@ -25,7 +25,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Stores
+// Stores (public)
+export const getActiveStores = () => api.get<Store[]>('/stores');
 export const getStore = (slug: string) => api.get<Store>(`/stores/${slug}`);
 export const getStoreProducts = (slug: string) =>
   api.get<Product[]>(`/stores/${slug}/products`);

@@ -5,6 +5,27 @@ import { createError } from '../middlewares/errorHandler.js';
 
 const prisma = new PrismaClient();
 
+// Public: List all active stores (for landing page)
+export async function getActiveStores(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const stores = await prisma.store.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        logo: true,
+        primaryColor: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(stores);
+  } catch (error) {
+    next(error);
+  }
+}
+
 // Public: Get store by slug
 export async function getStoreBySlug(req: Request, res: Response, next: NextFunction) {
   try {
