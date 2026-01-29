@@ -16,6 +16,15 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
     const user = await prisma.user.findUnique({
       where: { email },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -43,6 +52,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
         name: user.name,
         role: user.role,
         storeId: user.storeId,
+        storeName: user.store?.name || null,
+        storeSlug: user.store?.slug || null,
       },
     });
   } catch (error) {
