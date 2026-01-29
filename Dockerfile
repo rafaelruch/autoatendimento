@@ -86,4 +86,4 @@ ENV PORT=3001
 EXPOSE 3001
 
 # Comando para iniciar (sincroniza schema, roda seed e inicia servidor)
-CMD npx prisma db push --skip-generate && node dist/seed.js && node dist/index.js
+CMD npx prisma db push --skip-generate --accept-data-loss && node dist/seed.js && node dist/index.js
