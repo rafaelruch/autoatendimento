@@ -7,6 +7,7 @@ export function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [storeName, setStoreName] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,6 +15,17 @@ export function AdminOrders() {
     if (!token) {
       navigate('/admin/login');
       return;
+    }
+
+    // Get store name from user data
+    const userStr = localStorage.getItem('admin_user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setStoreName(user.storeName || '');
+      } catch {
+        // ignore
+      }
     }
 
     const fetchOrders = async () => {
@@ -79,7 +91,8 @@ export function AdminOrders() {
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-gray-900 text-white">
         <div className="p-6">
-          <h1 className="text-xl font-bold">Admin</h1>
+          <h1 className="text-xl font-bold">{storeName || 'Admin'}</h1>
+          {storeName && <p className="text-xs text-gray-400 mt-1">Painel Administrativo</p>}
         </div>
         <nav className="mt-6">
           <Link
