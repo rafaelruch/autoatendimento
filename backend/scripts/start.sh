@@ -3,11 +3,11 @@ set -e
 
 echo "=== Starting Auto Atendimento ==="
 
-# Sync database schema (force reset for clean state)
+# Sync database schema (without force-reset to preserve data)
 echo "Syncing database schema..."
-echo "y" | npx prisma db push --force-reset --skip-generate --accept-data-loss
+npx prisma db push --skip-generate --accept-data-loss
 
-# Run seed
+# Run seed (uses upsert, so it won't duplicate data)
 echo "Running seed..."
 node dist/seed.js
 
