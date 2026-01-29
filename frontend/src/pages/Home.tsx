@@ -3,12 +3,10 @@ import { useParams } from 'react-router-dom';
 import { ProductList } from '../components/ProductList';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { getStoreProducts } from '../services/api';
-import { useStore } from '../context/StoreContext';
 import type { Product } from '../types';
 
 export function Home() {
   const { slug } = useParams<{ slug: string }>();
-  const { store } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);

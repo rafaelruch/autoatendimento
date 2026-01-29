@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { superadminGetStores } from '../../services/api';
-import type { Store } from '../../types';
 
 export function SuperAdminDashboard() {
   const [stores, setStores] = useState<any[]>([]);

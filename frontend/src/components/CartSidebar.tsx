@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { createOrder, createPaymentPreference } from '../services/api';
@@ -8,8 +7,6 @@ import toast from 'react-hot-toast';
 export function CartSidebar() {
   const { items, total, updateQuantity, removeItem, clearCart, itemCount } = useCart();
   const { store } = useStore();
-  const { slug } = useParams();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 

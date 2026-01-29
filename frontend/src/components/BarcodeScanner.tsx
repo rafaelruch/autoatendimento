@@ -3,6 +3,7 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 import toast from 'react-hot-toast';
 import { getProductByBarcode } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useStore } from '../context/StoreContext';
 
 interface BarcodeScannerProps {
   onClose: () => void;
@@ -12,12 +13,14 @@ export function BarcodeScanner({ onClose }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
   const { addItem } = useCart();
+  const { store } = useStore();
 
   useEffect(() => {
+    if (!store) return;
+
     const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
 
     const startScanning = async () => {
       try {
@@ -34,7 +37,7 @@ export function BarcodeScanner({ onClose }: BarcodeScannerProps) {
 
         const selectedDeviceId = videoInputDevices[0].deviceId;
 
-        await reader.decodeFromVideoDevice(
+        const controls = await reader.decodeFromVideoDevice(
           selectedDeviceId,
           videoRef.current!,
           async (result) => {
@@ -42,7 +45,7 @@ export function BarcodeScanner({ onClose }: BarcodeScannerProps) {
               const barcode = result.getText();
 
               try {
-                const response = await getProductByBarcode(barcode);
+                const response = await getProductByBarcode(barcode, store.id);
                 addItem(response.data);
                 toast.success(`${response.data.name} adicionado ao carrinho`);
                 onClose();
@@ -52,6 +55,8 @@ export function BarcodeScanner({ onClose }: BarcodeScannerProps) {
             }
           }
         );
+
+        controlsRef.current = controls;
       } catch (err) {
         console.error('Error starting scanner:', err);
         setError('Não foi possível acessar a câmera');
@@ -62,11 +67,11 @@ export function BarcodeScanner({ onClose }: BarcodeScannerProps) {
     startScanning();
 
     return () => {
-      if (readerRef.current) {
-        readerRef.current.reset();
+      if (controlsRef.current) {
+        controlsRef.current.stop();
       }
     };
-  }, [addItem, onClose]);
+  }, [addItem, onClose, store]);
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
