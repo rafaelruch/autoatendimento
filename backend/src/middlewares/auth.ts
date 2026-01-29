@@ -14,12 +14,21 @@ export function authMiddleware(
 ) {
   try {
     const authHeader = req.headers.authorization;
+    // Also check for token in query params (for file downloads)
+    const queryToken = req.query.token as string;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (queryToken) {
+      token = queryToken;
+    }
+
+    if (!token) {
       throw createError('Token não fornecido', 401);
     }
 
-    const token = authHeader.split(' ')[1];
     const secret = process.env.JWT_SECRET || 'default-secret';
 
     const decoded = jwt.verify(token, secret) as { userId: string; role: string };

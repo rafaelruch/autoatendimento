@@ -5,8 +5,12 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  exportProducts,
+  importProducts,
+  getProductTemplate,
 } from '../controllers/productController.js';
 import { getOrders } from '../controllers/orderController.js';
+import { uploadCsv } from '../controllers/uploadController.js';
 
 const prisma = new PrismaClient();
 
@@ -19,6 +23,11 @@ adminRoutes.use(authMiddleware);
 adminRoutes.post('/products', createProduct);
 adminRoutes.put('/products/:id', updateProduct);
 adminRoutes.delete('/products/:id', deleteProduct);
+
+// Product Import/Export (rotas mais específicas antes das gerais)
+adminRoutes.get('/products/template', getProductTemplate);
+adminRoutes.get('/products/export/:storeId', exportProducts);
+adminRoutes.post('/products/import/:storeId', uploadCsv.single('file'), importProducts);
 
 // Orders
 adminRoutes.get('/orders', getOrders);

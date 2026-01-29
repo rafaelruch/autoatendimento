@@ -101,3 +101,26 @@ export const uploadImageHandler = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro ao fazer upload' });
   }
 };
+
+// CSV upload for product import (memory storage)
+export const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+  ) => {
+    const allowedTypes = ['text/csv', 'text/plain', 'application/vnd.ms-excel'];
+    const allowedExtensions = ['.csv'];
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Use apenas arquivos CSV.'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max for CSV
+  },
+});

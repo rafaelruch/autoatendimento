@@ -94,6 +94,37 @@ export const adminUploadProductImage = (id: string, file: File) => {
   return api.post<{ imageUrl: string }>(`/admin/products/${id}/image`, formData);
 };
 
+// Admin - Product Import/Export
+export const adminExportProducts = (storeId: string) => {
+  const token = localStorage.getItem('admin_token');
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  window.open(`${baseUrl}/admin/products/export/${storeId}?token=${token}`, '_blank');
+};
+
+export const adminDownloadProductTemplate = () => {
+  const token = localStorage.getItem('admin_token');
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  window.open(`${baseUrl}/admin/products/template?token=${token}`, '_blank');
+};
+
+export interface ImportResult {
+  success: boolean;
+  message: string;
+  created: number;
+  updated: number;
+  errors: string[];
+}
+
+export const adminImportProducts = (storeId: string, file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post<ImportResult>(`/admin/products/import/${storeId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
 // Admin - Orders
 export const adminGetOrders = () => api.get<Order[]>('/admin/orders');
 
