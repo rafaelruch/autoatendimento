@@ -292,10 +292,33 @@ export function SuperAdminStores() {
         return 'Mercado Pago';
       case 'PAGBANK':
         return 'PagBank';
-      case 'BOTH':
-        return 'Ambos';
       default:
         return provider;
+    }
+  };
+
+  const handleProviderChange = (provider: PaymentProvider) => {
+    // Clear the other provider's data when switching
+    if (provider === 'MERCADOPAGO') {
+      setFormData({
+        ...formData,
+        paymentProvider: provider,
+        // Clear PagBank fields
+        pbToken: '',
+        pbEmail: '',
+        pbPointSerial: '',
+        pbPointEnabled: false,
+      });
+    } else if (provider === 'PAGBANK') {
+      setFormData({
+        ...formData,
+        paymentProvider: provider,
+        // Clear Mercado Pago fields
+        mpAccessToken: '',
+        mpPublicKey: '',
+        mpPointDeviceId: '',
+        mpPointEnabled: false,
+      });
     }
   };
 
@@ -715,15 +738,18 @@ export function SuperAdminStores() {
                   {/* Provider Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Provedor de Pagamento Padrão
+                      Provedor de Pagamento
                     </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Escolha apenas um provedor de pagamento para esta loja
+                    </p>
                     <div className="flex gap-3">
-                      {(['MERCADOPAGO', 'PAGBANK', 'BOTH'] as PaymentProvider[]).map((provider) => (
+                      {(['MERCADOPAGO', 'PAGBANK'] as PaymentProvider[]).map((provider) => (
                         <button
                           key={provider}
                           type="button"
-                          onClick={() => setFormData({ ...formData, paymentProvider: provider })}
-                          className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                          onClick={() => handleProviderChange(provider)}
+                          className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
                             formData.paymentProvider === provider
                               ? 'border-gray-900 bg-gray-900 text-white'
                               : 'border-gray-200 text-gray-700 hover:border-gray-300'
@@ -735,13 +761,14 @@ export function SuperAdminStores() {
                     </div>
                   </div>
 
-                  {/* Mercado Pago Section */}
-                  <div className="border rounded-lg p-4">
+                  {/* Mercado Pago Section - Only show when selected */}
+                  {formData.paymentProvider === 'MERCADOPAGO' && (
+                  <div className="border rounded-lg p-4 border-blue-200 bg-blue-50/30">
                     <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                       <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
                       </svg>
-                      Mercado Pago
+                      Configurar Mercado Pago
                       {editingStore?.hasMpToken && (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
                           Token configurado
@@ -833,14 +860,16 @@ export function SuperAdminStores() {
                       </div>
                     </div>
                   </div>
+                  )}
 
-                  {/* PagBank Section */}
-                  <div className="border rounded-lg p-4">
+                  {/* PagBank Section - Only show when selected */}
+                  {formData.paymentProvider === 'PAGBANK' && (
+                  <div className="border rounded-lg p-4 border-orange-200 bg-orange-50/30">
                     <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                       <svg className="h-5 w-5 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
                       </svg>
-                      PagBank
+                      Configurar PagBank
                       {editingStore?.hasPbToken && (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
                           Token configurado
@@ -932,6 +961,7 @@ export function SuperAdminStores() {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               )}
 
