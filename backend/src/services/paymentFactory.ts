@@ -8,6 +8,7 @@ import type {
   PointPaymentParams,
   PointPaymentResult,
   StorePaymentConfig,
+  PaymentMethodType,
 } from './paymentTypes.js';
 
 const prisma = new PrismaClient();

@@ -39,6 +39,44 @@ export class MercadoPagoService implements IPaymentService {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
+      // Configurar métodos de pagamento baseado no tipo solicitado
+      let paymentMethods: { excluded_payment_types?: Array<{ id: string }> } | undefined;
+
+      if (params.paymentMethodType === 'PIX') {
+        // Apenas PIX - excluir cartões
+        paymentMethods = {
+          excluded_payment_types: [
+            { id: 'credit_card' },
+            { id: 'debit_card' },
+            { id: 'prepaid_card' },
+            { id: 'ticket' },
+            { id: 'atm' },
+          ],
+        };
+      } else if (params.paymentMethodType === 'CREDIT_CARD') {
+        // Apenas cartão de crédito
+        paymentMethods = {
+          excluded_payment_types: [
+            { id: 'debit_card' },
+            { id: 'bank_transfer' },
+            { id: 'ticket' },
+            { id: 'atm' },
+            { id: 'prepaid_card' },
+          ],
+        };
+      } else if (params.paymentMethodType === 'DEBIT_CARD') {
+        // Apenas cartão de débito
+        paymentMethods = {
+          excluded_payment_types: [
+            { id: 'credit_card' },
+            { id: 'bank_transfer' },
+            { id: 'ticket' },
+            { id: 'atm' },
+            { id: 'prepaid_card' },
+          ],
+        };
+      }
+
       const response = await preference.create({
         body: {
           items,
@@ -50,6 +88,7 @@ export class MercadoPagoService implements IPaymentService {
           },
           auto_return: 'approved',
           notification_url: `${backendUrl}/api/payments/webhook/mercadopago`,
+          ...(paymentMethods && { payment_methods: paymentMethods }),
         },
       });
 

@@ -10,9 +10,7 @@ import {
   getPointPaymentStatus,
 } from '../services/api';
 import toast from 'react-hot-toast';
-import type { PaymentProvider, PaymentOptions } from '../types';
-
-type PaymentMethod = 'online' | 'point';
+import type { PaymentOptions, PaymentMethodType } from '../types';
 
 export function CheckoutPage() {
   const { items, total, clearCart } = useCart();
@@ -20,9 +18,8 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [loading, setLoading] = useState(false);
+  const [loadingMethod, setLoadingMethod] = useState<PaymentMethodType | null>(null);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptions | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('online');
-  const [selectedProvider, setSelectedProvider] = useState<PaymentProvider>('MERCADOPAGO');
   const [pointStatus, setPointStatus] = useState<string | null>(null);
   const [pointPaymentId, setPointPaymentId] = useState<string | null>(null);
 
@@ -32,11 +29,6 @@ export function CheckoutPage() {
       getPaymentOptions(store.id)
         .then((res) => {
           setPaymentOptions(res.data);
-          setSelectedProvider(res.data.defaultProvider);
-          // Default to point if available
-          if (res.data.hasPoint) {
-            setSelectedMethod('point');
-          }
         })
         .catch((err) => {
           console.error('Error loading payment options:', err);
@@ -64,6 +56,7 @@ export function CheckoutPage() {
           setPointPaymentId(null);
           setPointStatus(null);
           setLoading(false);
+          setLoadingMethod(null);
         }
       } catch (error) {
         console.error('Error checking payment status:', error);
@@ -73,13 +66,14 @@ export function CheckoutPage() {
     return () => clearInterval(interval);
   }, [pointPaymentId, store?.id, clearCart, navigate, slug]);
 
-  const handleCheckout = async () => {
+  const handlePayment = async (method: PaymentMethodType) => {
     if (items.length === 0) {
       toast.error('Seu carrinho está vazio');
       return;
     }
 
     setLoading(true);
+    setLoadingMethod(method);
 
     try {
       if (!store) {
@@ -96,9 +90,23 @@ export function CheckoutPage() {
         store.id
       );
 
-      if (selectedMethod === 'point') {
+      // PIX always uses online payment
+      if (method === 'PIX') {
+        const paymentResponse = await createPaymentPreference(
+          orderResponse.data.id,
+          undefined,
+          'PIX'
+        );
+        window.location.href = paymentResponse.data.initPoint;
+        return;
+      }
+
+      // For debit/credit: use Point (maquininha) if available, otherwise online
+      const usePoint = paymentOptions?.hasPoint;
+
+      if (usePoint) {
         // Send to card machine
-        const pointResponse = await createPointPayment(orderResponse.data.id, selectedProvider);
+        const pointResponse = await createPointPayment(orderResponse.data.id);
 
         if (pointResponse.data.success) {
           setPointPaymentId(pointResponse.data.paymentIntentId || null);
@@ -107,21 +115,22 @@ export function CheckoutPage() {
         } else {
           toast.error(pointResponse.data.message || 'Erro ao enviar para maquininha');
           setLoading(false);
+          setLoadingMethod(null);
         }
       } else {
-        // Online payment
+        // Online payment with specific card type
         const paymentResponse = await createPaymentPreference(
           orderResponse.data.id,
-          selectedProvider
+          undefined,
+          method
         );
-
-        // Redirect to payment page
         window.location.href = paymentResponse.data.initPoint;
       }
     } catch (error) {
       console.error('Error creating order:', error);
       toast.error('Erro ao processar pedido. Tente novamente.');
       setLoading(false);
+      setLoadingMethod(null);
     }
   };
 
@@ -129,17 +138,6 @@ export function CheckoutPage() {
     navigate(`/${slug}/carrinho`);
     return null;
   }
-
-  const providerName = (provider: PaymentProvider) => {
-    switch (provider) {
-      case 'MERCADOPAGO':
-        return 'Mercado Pago';
-      case 'PAGBANK':
-        return 'PagBank';
-      default:
-        return provider;
-    }
-  };
 
   // Show waiting screen when point payment is in progress
   if (pointStatus) {
@@ -167,6 +165,7 @@ export function CheckoutPage() {
               setPointPaymentId(null);
               setPointStatus(null);
               setLoading(false);
+              setLoadingMethod(null);
             }}
             className="mt-6 text-gray-500 hover:text-gray-700 text-sm"
           >
@@ -181,6 +180,7 @@ export function CheckoutPage() {
     <div className="container mx-auto px-4 py-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Finalizar Compra</h1>
 
+      {/* Order Summary */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Resumo do Pedido</h2>
 
@@ -207,144 +207,84 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Forma de Pagamento</h2>
+      {/* Payment Methods - Large Buttons in 3 Columns */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-6 text-center">Escolha a forma de pagamento</h2>
 
-        {/* Payment Method Selection */}
-        <div className="space-y-3 mb-6">
-          {paymentOptions?.hasPoint && (
-            <button
-              onClick={() => setSelectedMethod('point')}
-              className={`w-full p-4 rounded-lg border-2 transition-all flex items-center gap-4 ${
-                selectedMethod === 'point'
-                  ? 'border-current'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              style={selectedMethod === 'point' ? { borderColor: 'var(--color-primary)' } : {}}
-            >
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{
-                  backgroundColor:
-                    selectedMethod === 'point' ? 'var(--color-primary)' : '#e5e7eb',
-                }}
-              >
-                <svg
-                  className={`h-6 w-6 ${selectedMethod === 'point' ? 'text-white' : 'text-gray-500'}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                  />
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-800">Cartão (Maquininha)</p>
-                <p className="text-sm text-gray-500">Débito ou Crédito na maquininha</p>
-              </div>
-            </button>
-          )}
-
+        <div className="grid grid-cols-3 gap-4">
+          {/* PIX Button */}
           <button
-            onClick={() => setSelectedMethod('online')}
-            className={`w-full p-4 rounded-lg border-2 transition-all flex items-center gap-4 ${
-              selectedMethod === 'online'
-                ? 'border-current'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            style={selectedMethod === 'online' ? { borderColor: 'var(--color-primary)' } : {}}
+            onClick={() => handlePayment('PIX')}
+            disabled={loading}
+            className="p-6 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-green-50 min-h-[180px]"
           >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{
-                backgroundColor:
-                  selectedMethod === 'online' ? 'var(--color-primary)' : '#e5e7eb',
-              }}
-            >
-              <svg
-                className={`h-6 w-6 ${selectedMethod === 'online' ? 'text-white' : 'text-gray-500'}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                />
-              </svg>
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+              {loadingMethod === 'PIX' ? (
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+              ) : (
+                <svg className="w-10 h-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 6v12M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
             </div>
-            <div className="text-left">
-              <p className="font-semibold text-gray-800">PIX ou Cartão Online</p>
-              <p className="text-sm text-gray-500">Pague pelo celular</p>
+            <div className="text-center">
+              <p className="text-xl font-bold text-gray-800">PIX</p>
+              <p className="text-xs text-gray-500 mt-1">Instantaneo</p>
+            </div>
+          </button>
+
+          {/* Debit Card Button */}
+          <button
+            onClick={() => handlePayment('DEBIT_CARD')}
+            disabled={loading}
+            className="p-6 rounded-xl border-2 border-gray-200 hover:border-blue-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-blue-50 min-h-[180px]"
+          >
+            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              {loadingMethod === 'DEBIT_CARD' ? (
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              ) : (
+                <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              )}
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-gray-800">Debito</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
+              </p>
+            </div>
+          </button>
+
+          {/* Credit Card Button */}
+          <button
+            onClick={() => handlePayment('CREDIT_CARD')}
+            disabled={loading}
+            className="p-6 rounded-xl border-2 border-gray-200 hover:border-purple-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-purple-50 min-h-[180px]"
+          >
+            <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+              {loadingMethod === 'CREDIT_CARD' ? (
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+              ) : (
+                <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              )}
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-gray-800">Credito</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
+              </p>
             </div>
           </button>
         </div>
 
-        {/* Provider Selection (if multiple available) */}
-        {paymentOptions &&
-          ((selectedMethod === 'online' && paymentOptions.online.length > 1) ||
-            (selectedMethod === 'point' && paymentOptions.point.length > 1)) && (
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium text-gray-700 mb-3">Processador:</p>
-              <div className="flex gap-3">
-                {(selectedMethod === 'online'
-                  ? paymentOptions.online
-                  : paymentOptions.point
-                ).map((provider) => (
-                  <button
-                    key={provider}
-                    onClick={() => setSelectedProvider(provider)}
-                    className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
-                      selectedProvider === provider
-                        ? 'border-current text-white'
-                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
-                    }`}
-                    style={
-                      selectedProvider === provider
-                        ? { borderColor: 'var(--color-primary)', backgroundColor: 'var(--color-primary)' }
-                        : {}
-                    }
-                  >
-                    {providerName(provider)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-        <p className="text-sm text-gray-500 mt-4">
-          {selectedMethod === 'point'
-            ? 'O pagamento será processado na maquininha do estabelecimento.'
-            : 'Você será redirecionado para o checkout seguro.'}
+        <p className="text-xs text-center text-gray-400 mt-6">
+          Pagamento 100% seguro
         </p>
       </div>
-
-      <button
-        onClick={handleCheckout}
-        disabled={loading}
-        className="w-full disabled:bg-gray-400 text-white font-bold py-4 rounded-lg transition-colors text-lg flex items-center justify-center gap-2 btn-primary"
-      >
-        {loading ? (
-          <>
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            Processando...
-          </>
-        ) : (
-          <>
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-            </svg>
-            {selectedMethod === 'point' ? 'Pagar na Maquininha' : 'Pagar Online'}
-          </>
-        )}
-      </button>
     </div>
   );
 }

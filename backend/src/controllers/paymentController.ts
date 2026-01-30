@@ -2,13 +2,14 @@ import type { Request, Response, NextFunction } from 'express';
 import { PrismaClient, PaymentProvider } from '@prisma/client';
 import { paymentFactory } from '../services/paymentFactory.js';
 import { createError } from '../middlewares/errorHandler.js';
+import type { PaymentMethodType } from '../services/paymentTypes.js';
 
 const prisma = new PrismaClient();
 
 // Criar preferência de pagamento (online)
 export async function createPreference(req: Request, res: Response, next: NextFunction) {
   try {
-    const { orderId, provider } = req.body;
+    const { orderId, provider, paymentMethodType } = req.body;
 
     if (!orderId) {
       throw createError('orderId é obrigatório', 400);
@@ -49,6 +50,7 @@ export async function createPreference(req: Request, res: Response, next: NextFu
         items,
         total: Number(order.total),
         storeSlug: order.store.slug,
+        paymentMethodType: paymentMethodType as PaymentMethodType | undefined,
       },
       config,
       provider as PaymentProvider | undefined
@@ -58,11 +60,12 @@ export async function createPreference(req: Request, res: Response, next: NextFu
       throw createError(result.error || 'Erro ao criar pagamento', 500);
     }
 
-    // Atualizar o pedido com o provider usado
+    // Atualizar o pedido com o provider usado e método de pagamento
     await prisma.order.update({
       where: { id: orderId },
       data: {
         paymentProvider: provider || config.provider,
+        paymentMethod: paymentMethodType || null,
       },
     });
 

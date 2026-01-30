@@ -81,6 +81,41 @@ export class PagBankService implements IPaymentService {
       console.log('[PagBank] Token length:', token.length);
       console.log('[PagBank] Token (primeiros 20 chars):', token.substring(0, 20) + '...');
 
+      // Configurar métodos de pagamento baseado no tipo solicitado
+      let paymentMethods: Array<{ type: string }>;
+      let paymentMethodsConfigs: Array<{ type: string; config_options?: Array<{ option: string; value: string }> }> = [];
+
+      if (params.paymentMethodType === 'PIX') {
+        paymentMethods = [{ type: 'PIX' }];
+      } else if (params.paymentMethodType === 'CREDIT_CARD') {
+        paymentMethods = [{ type: 'CREDIT_CARD' }];
+        paymentMethodsConfigs = [
+          {
+            type: 'CREDIT_CARD',
+            config_options: [
+              { option: 'INSTALLMENTS_LIMIT', value: '1' },
+            ],
+          },
+        ];
+      } else if (params.paymentMethodType === 'DEBIT_CARD') {
+        paymentMethods = [{ type: 'DEBIT_CARD' }];
+      } else {
+        // Todos os métodos disponíveis
+        paymentMethods = [
+          { type: 'PIX' },
+          { type: 'CREDIT_CARD' },
+          { type: 'DEBIT_CARD' },
+        ];
+        paymentMethodsConfigs = [
+          {
+            type: 'CREDIT_CARD',
+            config_options: [
+              { option: 'INSTALLMENTS_LIMIT', value: '1' },
+            ],
+          },
+        ];
+      }
+
       // Usar endpoint de checkout para pagamento online com redirect
       const checkoutData = {
         reference_id: params.orderId,
@@ -94,19 +129,8 @@ export class PagBankService implements IPaymentService {
         })),
         additional_amount: 0,
         discount_amount: 0,
-        payment_methods: [
-          { type: 'PIX' },
-          { type: 'CREDIT_CARD' },
-          { type: 'DEBIT_CARD' },
-        ],
-        payment_methods_configs: [
-          {
-            type: 'CREDIT_CARD',
-            config_options: [
-              { option: 'INSTALLMENTS_LIMIT', value: '1' },
-            ],
-          },
-        ],
+        payment_methods: paymentMethods,
+        ...(paymentMethodsConfigs.length > 0 && { payment_methods_configs: paymentMethodsConfigs }),
         soft_descriptor: 'AUTOATENDIMENTO',
         redirect_url: `${frontendUrl}/${params.storeSlug}/pagamento/sucesso`,
         return_url: `${frontendUrl}/${params.storeSlug}/pagamento/sucesso`,

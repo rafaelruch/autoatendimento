@@ -7,12 +7,15 @@ export interface PaymentItem {
   unitPrice: number;
 }
 
+export type PaymentMethodType = 'PIX' | 'DEBIT_CARD' | 'CREDIT_CARD';
+
 export interface CreatePaymentParams {
   orderId: string;
   items: PaymentItem[];
   total: number;
   storeSlug: string;
   usePoint?: boolean;  // Se deve usar maquininha
+  paymentMethodType?: PaymentMethodType; // Tipo específico de pagamento
 }
 
 export interface PaymentResult {

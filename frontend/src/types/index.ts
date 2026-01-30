@@ -1,5 +1,7 @@
 export type PaymentProvider = 'MERCADOPAGO' | 'PAGBANK' | 'BOTH';
 
+export type PaymentMethodType = 'PIX' | 'DEBIT_CARD' | 'CREDIT_CARD';
+
 export interface Store {
   id: string;
   slug: string;

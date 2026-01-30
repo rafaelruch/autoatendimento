@@ -8,6 +8,7 @@ import type {
   PaymentOptions,
   PointPaymentResult,
   PaymentProvider,
+  PaymentMethodType,
   Customer,
   CustomerListResponse,
   CustomerStats,
@@ -46,13 +47,17 @@ export const createOrder = (
 export const getOrder = (id: string) => api.get<Order>(`/orders/${id}`);
 
 // Payments
-export const createPaymentPreference = (orderId: string, provider?: PaymentProvider) =>
+export const createPaymentPreference = (
+  orderId: string,
+  provider?: PaymentProvider,
+  paymentMethodType?: PaymentMethodType
+) =>
   api.post<{
     preferenceId: string;
     initPoint: string;
     qrCode?: string;
     qrCodeBase64?: string;
-  }>('/payments/create-preference', { orderId, provider });
+  }>('/payments/create-preference', { orderId, provider, paymentMethodType });
 
 export const getPaymentStatus = (paymentId: string) =>
   api.get<{ status: string; paymentProvider?: PaymentProvider; pointPayment?: boolean }>(
