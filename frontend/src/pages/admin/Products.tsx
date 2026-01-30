@@ -110,6 +110,12 @@ export function AdminProducts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const storeId = getStoreId();
+    if (!storeId && !editingProduct) {
+      toast.error('Erro: loja não identificada');
+      return;
+    }
+
     const data = {
       name: formData.name,
       description: formData.description || null,
@@ -118,6 +124,7 @@ export function AdminProducts() {
       stock: parseInt(formData.stock),
       barcode: formData.barcode || null,
       image: formData.image || null,
+      ...(storeId && !editingProduct ? { storeId } : {}),
     };
 
     try {
