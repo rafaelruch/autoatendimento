@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment, PaymentMethod } from 'mercadopago';
 import type {
   IPaymentService,
   CreatePaymentParams,
@@ -26,6 +26,15 @@ export class MercadoPagoService implements IPaymentService {
       }
 
       const client = this.getClient(accessToken);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+
+      // Para PIX, criar pagamento direto com QR Code (sem login)
+      if (params.paymentMethodType === 'PIX') {
+        return this.createPixPayment(params, config, frontendUrl, backendUrl);
+      }
+
+      // Para cartões, usar Checkout Pro (redirect)
       const preference = new Preference(client);
 
       const items = params.items.map((item) => ({
@@ -36,24 +45,10 @@ export class MercadoPagoService implements IPaymentService {
         currency_id: 'BRL' as const,
       }));
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-
       // Configurar métodos de pagamento baseado no tipo solicitado
       let paymentMethods: { excluded_payment_types?: Array<{ id: string }> } | undefined;
 
-      if (params.paymentMethodType === 'PIX') {
-        // Apenas PIX - excluir cartões
-        paymentMethods = {
-          excluded_payment_types: [
-            { id: 'credit_card' },
-            { id: 'debit_card' },
-            { id: 'prepaid_card' },
-            { id: 'ticket' },
-            { id: 'atm' },
-          ],
-        };
-      } else if (params.paymentMethodType === 'CREDIT_CARD') {
+      if (params.paymentMethodType === 'CREDIT_CARD') {
         // Apenas cartão de crédito
         paymentMethods = {
           excluded_payment_types: [
@@ -102,6 +97,64 @@ export class MercadoPagoService implements IPaymentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro ao criar pagamento',
+      };
+    }
+  }
+
+  // Criar pagamento PIX direto (sem redirect, com QR Code)
+  private async createPixPayment(
+    params: CreatePaymentParams,
+    config: StorePaymentConfig,
+    frontendUrl: string,
+    backendUrl: string
+  ): Promise<PaymentResult> {
+    try {
+      const accessToken = config.mpAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+      if (!accessToken) {
+        return { success: false, error: 'Mercado Pago não configurado' };
+      }
+
+      const client = this.getClient(accessToken);
+      const payment = new Payment(client);
+
+      // Descrição do pedido
+      const description = params.items.map(i => `${i.quantity}x ${i.title}`).join(', ').substring(0, 256);
+
+      const paymentData = await payment.create({
+        body: {
+          transaction_amount: params.total,
+          description: description || 'Pedido',
+          payment_method_id: 'pix',
+          external_reference: params.orderId,
+          notification_url: `${backendUrl}/api/payments/webhook/mercadopago`,
+          payer: {
+            email: 'cliente@email.com', // Email genérico para PIX
+          },
+        },
+      });
+
+      // Extrair dados do PIX
+      const pixData = paymentData.point_of_interaction?.transaction_data;
+
+      if (!pixData?.qr_code) {
+        console.error('PIX data not found:', paymentData);
+        return { success: false, error: 'Erro ao gerar QR Code PIX' };
+      }
+
+      return {
+        success: true,
+        preferenceId: String(paymentData.id),
+        qrCode: pixData.qr_code,
+        qrCodeBase64: pixData.qr_code_base64,
+        // Para PIX direto, não há redirect - o frontend mostra o QR Code
+        initPoint: undefined,
+      };
+    } catch (error) {
+      console.error('Mercado Pago PIX error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro ao criar pagamento PIX',
       };
     }
   }

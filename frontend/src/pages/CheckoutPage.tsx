@@ -8,6 +8,7 @@ import {
   createPointPayment,
   getPaymentOptions,
   getPointPaymentStatus,
+  getPaymentStatus,
 } from '../services/api';
 import toast from 'react-hot-toast';
 import type { PaymentOptions, PaymentMethodType } from '../types';
@@ -22,6 +23,8 @@ export function CheckoutPage() {
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptions | null>(null);
   const [pointStatus, setPointStatus] = useState<string | null>(null);
   const [pointPaymentId, setPointPaymentId] = useState<string | null>(null);
+  // PIX QR Code state
+  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string; paymentId: string } | null>(null);
 
   // Load payment options
   useEffect(() => {
@@ -66,6 +69,34 @@ export function CheckoutPage() {
     return () => clearInterval(interval);
   }, [pointPaymentId, store?.id, clearCart, navigate, slug]);
 
+  // Poll for PIX payment status
+  useEffect(() => {
+    if (!pixData?.paymentId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await getPaymentStatus(pixData.paymentId);
+
+        if (res.data.status === 'PAID') {
+          clearInterval(interval);
+          clearCart();
+          toast.success('Pagamento PIX aprovado!');
+          navigate(`/${slug}/pagamento/sucesso`);
+        } else if (res.data.status === 'CANCELLED' || res.data.status === 'REFUNDED') {
+          clearInterval(interval);
+          toast.error('Pagamento cancelado');
+          setPixData(null);
+          setLoading(false);
+          setLoadingMethod(null);
+        }
+      } catch (error) {
+        console.error('Error checking PIX status:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [pixData?.paymentId, clearCart, navigate, slug]);
+
   const handlePayment = async (method: PaymentMethodType) => {
     if (items.length === 0) {
       toast.error('Seu carrinho está vazio');
@@ -90,14 +121,29 @@ export function CheckoutPage() {
         store.id
       );
 
-      // PIX always uses online payment
+      // PIX - show QR code directly (no redirect)
       if (method === 'PIX') {
         const paymentResponse = await createPaymentPreference(
           orderResponse.data.id,
           undefined,
           'PIX'
         );
-        window.location.href = paymentResponse.data.initPoint;
+
+        // If we got a QR code, show it instead of redirecting
+        if (paymentResponse.data.qrCode && paymentResponse.data.qrCodeBase64) {
+          setPixData({
+            qrCode: paymentResponse.data.qrCode,
+            qrCodeBase64: paymentResponse.data.qrCodeBase64,
+            paymentId: paymentResponse.data.preferenceId,
+          });
+          toast.success('QR Code PIX gerado!');
+          return;
+        }
+
+        // Fallback to redirect if no QR code
+        if (paymentResponse.data.initPoint) {
+          window.location.href = paymentResponse.data.initPoint;
+        }
         return;
       }
 
@@ -170,6 +216,77 @@ export function CheckoutPage() {
             className="mt-6 text-gray-500 hover:text-gray-700 text-sm"
           >
             Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show PIX QR Code screen
+  if (pixData) {
+    const copyPixCode = () => {
+      navigator.clipboard.writeText(pixData.qrCode);
+      toast.success('Codigo PIX copiado!');
+    };
+
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12 6v12M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Pague com PIX</h2>
+          <p className="text-gray-600 mb-6">
+            Escaneie o QR Code ou copie o codigo
+          </p>
+
+          {/* QR Code */}
+          <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block mb-6">
+            <img
+              src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+              alt="QR Code PIX"
+              className="w-64 h-64"
+            />
+          </div>
+
+          {/* Total */}
+          <div className="mb-6">
+            <p className="text-sm text-gray-500">Valor a pagar:</p>
+            <p className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
+              R$ {total.toFixed(2).replace('.', ',')}
+            </p>
+          </div>
+
+          {/* Copy button */}
+          <button
+            onClick={copyPixCode}
+            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors mb-4 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            Copiar codigo PIX
+          </button>
+
+          {/* Status indicator */}
+          <div className="flex items-center justify-center gap-2 text-gray-500 mb-4">
+            <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm">Aguardando pagamento...</span>
+          </div>
+
+          {/* Cancel button */}
+          <button
+            onClick={() => {
+              setPixData(null);
+              setLoading(false);
+              setLoadingMethod(null);
+            }}
+            className="text-gray-500 hover:text-gray-700 text-sm"
+          >
+            Cancelar e escolher outro metodo
           </button>
         </div>
       </div>
