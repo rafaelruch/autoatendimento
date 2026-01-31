@@ -210,6 +210,19 @@ export const adminGetCustomer = (id: string, storeId: string) =>
 export const adminGetCustomerByCpf = (cpf: string, storeId: string) =>
   api.get<Customer>(`/customers/cpf/${cpf}?storeId=${storeId}`);
 
+// Public Customer APIs (for self-service checkout)
+export const getCustomerByPhone = (phone: string, storeId: string) =>
+  api.get<Customer>(`/customers/phone/${phone}?storeId=${storeId}`);
+
+export const registerCustomer = (data: {
+  name: string;
+  cpf: string;
+  phone: string;
+  photo?: string;
+  storeId: string;
+}) =>
+  api.post<Customer>(`/customers/register?storeId=${data.storeId}`, data);
+
 export const adminCreateCustomer = (data: Partial<Customer> & { storeId: string }) =>
   api.post<Customer>(`/customers?storeId=${data.storeId}`, data);
 

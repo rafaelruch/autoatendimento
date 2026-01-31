@@ -2,12 +2,16 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { ProductList } from '../components/ProductList';
 import { BarcodeScanner } from '../components/BarcodeScanner';
+import { IdentificationQRScreen } from '../components/IdentificationQRScreen';
 import { getStoreProducts, getProductByBarcode } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { useScanner } from '../context/ScannerContext';
 import toast from 'react-hot-toast';
-import type { Product } from '../types';
+import type { Product, Customer } from '../types';
+
+// Flow: initial -> qr-code -> welcome (instructions) -> shopping
+type CheckoutFlow = 'initial' | 'qr-code' | 'welcome' | 'shopping';
 
 export function Home() {
   const { slug } = useParams<{ slug: string }>();
@@ -16,12 +20,17 @@ export function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [flowState, setFlowState] = useState<CheckoutFlow>('initial');
   const [welcomeExiting, setWelcomeExiting] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const [inactivityTimer, setInactivityTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const categoriesRef = useRef<HTMLDivElement>(null);
-  const { addItem } = useCart();
+  const { addItem, clearCart, itemCount } = useCart();
   const { store } = useStore();
   const { showScanner, closeScanner } = useScanner();
+
+  // Check if in shopping mode (for barcode scanner)
+  const isShopping = flowState === 'shopping';
 
   // Barcode scanner input buffer (for USB barcode readers)
   const barcodeBufferRef = useRef<string>('');
@@ -47,7 +56,7 @@ export function Home() {
 
   // Listen for keyboard input from USB barcode scanner
   useEffect(() => {
-    if (showWelcome || !store) return;
+    if (!isShopping || !store) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input field
@@ -102,21 +111,69 @@ export function Home() {
         clearTimeout(barcodeTimeoutRef.current);
       }
     };
-  }, [showWelcome, store, processBarcode]);
+  }, [isShopping, store, processBarcode]);
 
-  // Check if welcome should be shown on mount and when returning to page
+  // Check if session exists on mount
   useEffect(() => {
-    const dismissed = sessionStorage.getItem(`welcome_dismissed_${slug}`);
-    setShowWelcome(!dismissed);
+    const savedCustomer = sessionStorage.getItem(`customer_${slug}`);
+    if (savedCustomer) {
+      try {
+        setCurrentCustomer(JSON.parse(savedCustomer));
+        setFlowState('shopping');
+      } catch {
+        setFlowState('initial');
+      }
+    } else {
+      setFlowState('initial');
+    }
     setWelcomeExiting(false);
   }, [slug]);
 
+  // Inactivity timeout - reset to initial after 120s of no items
+  useEffect(() => {
+    // Clear any existing timer
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+    }
+
+    if (flowState === 'shopping' && itemCount === 0) {
+      const timer = setTimeout(() => {
+        // Reset everything
+        sessionStorage.removeItem(`customer_${slug}`);
+        setCurrentCustomer(null);
+        setFlowState('initial');
+        clearCart();
+      }, 120000); // 120 seconds
+
+      setInactivityTimer(timer);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowState, itemCount, slug]);
+
+  // Go to QR code screen for identification
+  const handleIdentify = () => {
+    setFlowState('qr-code');
+  };
+
+  // Customer was identified (from QR polling)
+  const handleCustomerIdentified = (customer: Customer) => {
+    setCurrentCustomer(customer);
+    sessionStorage.setItem(`customer_${slug}`, JSON.stringify(customer));
+    setFlowState('welcome'); // Show instructions
+    toast.success(`Bem-vindo, ${customer.name.split(' ')[0]}!`);
+  };
+
+  // Cancel identification and go back
+  const handleCancelIdentification = () => {
+    setFlowState('initial');
+  };
+
+  // Start shopping after seeing instructions
   const handleStartShopping = () => {
-    sessionStorage.setItem(`welcome_dismissed_${slug}`, 'true');
     setWelcomeExiting(true);
-    // Wait for animation to complete before hiding
     setTimeout(() => {
-      setShowWelcome(false);
+      setFlowState('shopping');
       setWelcomeExiting(false);
     }, 500);
   };
@@ -191,8 +248,64 @@ export function Home() {
     );
   }
 
-  // Welcome/Instructions Screen
-  if (showWelcome) {
+  // Initial Screen - "Já é cadastrado?"
+  if (flowState === 'initial') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="w-full max-w-md mx-auto px-6 py-8 text-center">
+          {/* Store Logo */}
+          {store?.logo && (
+            <img
+              src={store.logo}
+              alt={store.name}
+              className="h-20 w-20 rounded-full mx-auto mb-4 bg-white object-cover shadow-lg"
+            />
+          )}
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{store?.name}</h1>
+          <p className="text-lg text-gray-600 mb-12">Auto-atendimento</p>
+
+          {/* Question */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div
+              className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Identificacao</h2>
+            <p className="text-gray-600 mb-6">
+              Escaneie o QR Code com seu celular para se identificar ou fazer seu cadastro
+            </p>
+            <button
+              onClick={handleIdentify}
+              className="w-full py-5 rounded-xl text-white text-xl font-bold shadow-lg transform transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              Comecar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // QR Code Screen for identification
+  if (flowState === 'qr-code') {
+    return (
+      <IdentificationQRScreen
+        onCustomerIdentified={handleCustomerIdentified}
+        onCancel={handleCancelIdentification}
+      />
+    );
+  }
+
+  // Welcome/Instructions Screen (after identification)
+  if (flowState === 'welcome') {
     return (
       <div
         className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto transition-transform duration-500 ease-in-out ${
@@ -200,18 +313,26 @@ export function Home() {
         }`}
       >
         <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 text-center flex flex-col min-h-full justify-center">
-          {/* Logo/Title */}
+          {/* Customer greeting */}
           <div className="mb-4 sm:mb-8 flex-shrink-0">
-            <div
-              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">Bem-vindo!</h1>
-            <p className="text-base sm:text-lg text-gray-600">Auto-atendimento</p>
+            {currentCustomer?.photo ? (
+              <img
+                src={currentCustomer.photo}
+                alt={currentCustomer.name}
+                className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 rounded-full object-cover shadow-lg border-4 border-white"
+              />
+            ) : (
+              <div
+                className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center text-3xl font-bold text-white"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                {currentCustomer?.name?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">
+              Ola, {currentCustomer?.name?.split(' ')[0]}!
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600">Veja como funciona</p>
           </div>
 
           {/* Steps */}
@@ -280,13 +401,39 @@ export function Home() {
             </svg>
             Toque para comecar
           </button>
-        </div>
+
+                  </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
+      {/* Customer greeting */}
+      {currentCustomer && (
+        <div
+          className="flex items-center gap-3 px-4 py-2 text-white"
+          style={{ backgroundColor: 'var(--color-primary-dark)' }}
+        >
+          {currentCustomer.photo ? (
+            <img
+              src={currentCustomer.photo}
+              alt={currentCustomer.name}
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/30"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <span className="text-sm font-bold">
+                {currentCustomer.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="text-sm">
+            Ola, <strong>{currentCustomer.name.split(' ')[0]}</strong>!
+          </span>
+        </div>
+      )}
+
       {/* Horizontal Category Slider */}
       <div className="bg-white shadow-md flex-shrink-0">
         <div className="flex items-center gap-2 px-2 py-3">

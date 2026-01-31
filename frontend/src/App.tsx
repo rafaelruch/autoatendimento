@@ -8,6 +8,8 @@ import { Home } from './pages/Home';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { PaymentSuccess } from './pages/PaymentSuccess';
+import { CustomerRegistration } from './pages/CustomerRegistration';
+import { CustomerIdentification } from './pages/CustomerIdentification';
 import { AdminLogin } from './pages/admin/Login';
 import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminProducts } from './pages/admin/Products';
@@ -72,6 +74,14 @@ function StoreLayout() {
               <PaymentSuccess />
             </Layout>
           }
+        />
+        <Route
+          path="cadastro"
+          element={<CustomerRegistration />}
+        />
+        <Route
+          path="identificar"
+          element={<CustomerIdentification />}
         />
         </Routes>
       </ScannerProvider>

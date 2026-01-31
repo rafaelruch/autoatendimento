@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
@@ -8,14 +9,23 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleAdd = () => {
+    if (isAdding) return;
+
+    setIsAdding(true);
     addItem(product);
     toast.success(`${product.name} adicionado ao carrinho`);
+
+    // Reset animation after delay
+    setTimeout(() => setIsAdding(false), 800);
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow touch-manipulation">
+    <div className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all touch-manipulation ${
+      isAdding ? 'scale-[0.98]' : ''
+    }`}>
       <div className="aspect-square bg-gray-100 relative">
         {product.image ? (
           <img
@@ -53,6 +63,27 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
           </div>
         )}
+
+        {/* Added to cart overlay animation */}
+        {isAdding && (
+          <div className="absolute inset-0 bg-green-500/80 flex items-center justify-center animate-fade-in">
+            <div className="bg-white rounded-full p-4 animate-bounce-in">
+              <svg
+                className="h-12 w-12 text-green-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 sm:p-5">
@@ -76,10 +107,27 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <button
           onClick={handleAdd}
-          disabled={product.stock === 0}
-          className="w-full mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 sm:py-5 rounded-xl transition-all btn-primary text-base sm:text-lg active:scale-95 touch-manipulation"
+          disabled={product.stock === 0 || isAdding}
+          className={`w-full mt-4 disabled:cursor-not-allowed text-white font-bold py-4 sm:py-5 rounded-xl transition-all text-base sm:text-lg touch-manipulation ${
+            isAdding
+              ? 'bg-green-500 scale-95'
+              : product.stock === 0
+                ? 'bg-gray-300'
+                : 'btn-primary active:scale-95'
+          }`}
         >
-          {product.stock === 0 ? 'Indisponivel' : 'Adicionar'}
+          {isAdding ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Adicionado!
+            </span>
+          ) : product.stock === 0 ? (
+            'Indisponivel'
+          ) : (
+            'Adicionar'
+          )}
         </button>
       </div>
     </div>

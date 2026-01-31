@@ -207,6 +207,55 @@ export async function getCustomer(req: Request, res: Response) {
 }
 
 /**
+ * Busca cliente por telefone (público - para autoatendimento)
+ * GET /api/customers/phone/:phone?storeId=xxx
+ */
+export async function getCustomerByPhone(req: Request, res: Response) {
+  try {
+    const { phone } = req.params;
+    const storeId = req.query.storeId as string;
+
+    if (!storeId) {
+      return res.status(400).json({ error: 'storeId é obrigatório' });
+    }
+
+    const cleanPhone = formatPhone(phone);
+
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      return res.status(400).json({ error: 'Telefone inválido' });
+    }
+
+    const customer = await prisma.customer.findFirst({
+      where: { phone: cleanPhone, storeId },
+      select: {
+        id: true,
+        name: true,
+        cpf: true,
+        phone: true,
+        photo: true,
+        condominium: true,
+        block: true,
+        unit: true,
+        active: true,
+      },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente não encontrado' });
+    }
+
+    if (!customer.active) {
+      return res.status(403).json({ error: 'Cliente inativo', customer });
+    }
+
+    return res.json(customer);
+  } catch (error) {
+    console.error('Error getting customer by phone:', error);
+    return res.status(500).json({ error: 'Erro ao buscar cliente' });
+  }
+}
+
+/**
  * Busca cliente por CPF
  * GET /api/customers/cpf/:cpf?storeId=xxx
  */
@@ -248,6 +297,114 @@ export async function getCustomerByCpf(req: Request, res: Response) {
   } catch (error) {
     console.error('Error getting customer by CPF:', error);
     return res.status(500).json({ error: 'Erro ao buscar cliente' });
+  }
+}
+
+/**
+ * Registra um novo cliente (público - para autoatendimento)
+ * POST /api/customers/register
+ *
+ * Campos obrigatórios: name, cpf, phone, photo
+ * Condominium e unit são preenchidos como "A definir" por padrão
+ */
+export async function registerCustomer(req: Request, res: Response) {
+  try {
+    const storeId = req.query.storeId as string || req.body.storeId;
+    const { name, cpf, phone, photo } = req.body;
+
+    if (!storeId) {
+      return res.status(400).json({ error: 'storeId é obrigatório' });
+    }
+
+    // Validar campos obrigatórios
+    if (!name?.trim()) {
+      return res.status(400).json({ error: 'Nome é obrigatório' });
+    }
+
+    if (!cpf) {
+      return res.status(400).json({ error: 'CPF é obrigatório' });
+    }
+
+    const cleanCpf = formatCpf(cpf);
+
+    if (!isValidCpf(cleanCpf)) {
+      return res.status(400).json({ error: 'CPF inválido' });
+    }
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Telefone é obrigatório' });
+    }
+
+    const cleanPhone = formatPhone(phone);
+
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      return res.status(400).json({ error: 'Telefone inválido (deve ter 10 ou 11 dígitos)' });
+    }
+
+    if (!photo) {
+      return res.status(400).json({ error: 'Foto é obrigatória para reconhecimento facial' });
+    }
+
+    // Verificar se já existe cliente com esse CPF na loja
+    const existingByCpf = await prisma.customer.findFirst({
+      where: { cpf: cleanCpf, storeId },
+    });
+
+    if (existingByCpf) {
+      return res.status(409).json({
+        error: 'Já existe um cliente com este CPF cadastrado',
+        existingId: existingByCpf.id,
+      });
+    }
+
+    // Verificar se já existe cliente com esse telefone na loja
+    const existingByPhone = await prisma.customer.findFirst({
+      where: { phone: cleanPhone, storeId },
+    });
+
+    if (existingByPhone) {
+      return res.status(409).json({
+        error: 'Já existe um cliente com este telefone cadastrado',
+        existingId: existingByPhone.id,
+      });
+    }
+
+    // Verificar se a loja existe
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+    });
+
+    if (!store) {
+      return res.status(404).json({ error: 'Loja não encontrada' });
+    }
+
+    const customer = await prisma.customer.create({
+      data: {
+        name: name.trim(),
+        cpf: cleanCpf,
+        phone: cleanPhone,
+        photo,
+        condominium: 'A definir',
+        unit: 'A definir',
+        storeId,
+      },
+      select: {
+        id: true,
+        name: true,
+        cpf: true,
+        phone: true,
+        photo: true,
+        condominium: true,
+        block: true,
+        unit: true,
+        active: true,
+      },
+    });
+
+    return res.status(201).json(customer);
+  } catch (error) {
+    console.error('Error registering customer:', error);
+    return res.status(500).json({ error: 'Erro ao registrar cliente' });
   }
 }
 

@@ -3,6 +3,8 @@ import {
   listCustomers,
   getCustomer,
   getCustomerByCpf,
+  getCustomerByPhone,
+  registerCustomer,
   createCustomer,
   updateCustomer,
   deleteCustomer,
@@ -15,6 +17,8 @@ const router = Router();
 
 // Rotas públicas (para identificação no autoatendimento)
 router.get('/cpf/:cpf', getCustomerByCpf);
+router.get('/phone/:phone', getCustomerByPhone);
+router.post('/register', registerCustomer);
 
 // Rotas protegidas (admin da loja)
 router.get('/', authMiddleware, listCustomers);

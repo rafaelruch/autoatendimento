@@ -9,12 +9,14 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   itemCount: number;
+  isAnimating: boolean;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
     setItems((prev) => {
@@ -28,6 +30,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { product, quantity }];
     });
+    // Trigger cart animation
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 600);
   }, []);
 
   const removeItem = useCallback((productId: string) => {
@@ -67,6 +72,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         total,
         itemCount,
+        isAnimating,
       }}
     >
       {children}

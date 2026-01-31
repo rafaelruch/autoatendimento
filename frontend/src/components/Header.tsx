@@ -4,7 +4,7 @@ import { useStore } from '../context/StoreContext';
 import { useScanner } from '../context/ScannerContext';
 
 export function Header() {
-  const { itemCount, total } = useCart();
+  const { itemCount, total, isAnimating } = useCart();
   const { store } = useStore();
   const { slug } = useParams();
   const location = useLocation();
@@ -56,10 +56,12 @@ export function Header() {
           )}
 
           {/* Cart indicator */}
-          <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl">
+          <div className={`flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl transition-all ${
+            isAnimating ? 'animate-cart-bounce scale-110 bg-white/40' : ''
+          }`}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
+              className={`h-6 w-6 transition-transform ${isAnimating ? 'animate-wiggle' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -71,7 +73,7 @@ export function Header() {
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            <span className="font-medium">
+            <span className={`font-medium transition-all ${isAnimating ? 'scale-125' : ''}`}>
               {itemCount}
             </span>
             <span className="font-bold hidden sm:inline">

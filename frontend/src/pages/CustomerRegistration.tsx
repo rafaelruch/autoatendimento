@@ -1,0 +1,498 @@
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useStore } from '../context/StoreContext';
+import { registerCustomer, uploadCustomerPhoto } from '../services/api';
+
+export function CustomerRegistration() {
+  const { store, loading: storeLoading, error: storeError } = useStore();
+  const [searchParams] = useSearchParams();
+  const phoneFromUrl = searchParams.get('phone') || '';
+
+  const [formData, setFormData] = useState({
+    name: '',
+    cpf: '',
+    phone: phoneFromUrl,
+  });
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Format phone for display
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  // Format CPF for display
+  const formatCpf = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9)
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    setFormData({ ...formData, phone: digits });
+    setError(null);
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    setFormData({ ...formData, cpf: digits });
+    setError(null);
+  };
+
+  // Camera functions
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setError('Nao foi possivel acessar a camera');
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setPhoto(dataUrl);
+
+        // Convert to file for upload
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+              setPhotoFile(file);
+            }
+          },
+          'image/jpeg',
+          0.8
+        );
+      }
+      stopCamera();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhoto(null);
+    setPhotoFile(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim()) {
+      setError('Nome e obrigatorio');
+      return;
+    }
+
+    if (formData.cpf.length !== 11) {
+      setError('CPF deve ter 11 digitos');
+      return;
+    }
+
+    if (formData.phone.length < 10) {
+      setError('Telefone deve ter pelo menos 10 digitos');
+      return;
+    }
+
+    if (!photoFile) {
+      setError('Foto e obrigatoria para reconhecimento facial');
+      return;
+    }
+
+    if (!store?.id) {
+      setError('Loja nao identificada');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Upload photo (required)
+      const uploadResponse = await uploadCustomerPhoto(photoFile);
+      const photoUrl = uploadResponse.data.url;
+
+      // Register customer
+      await registerCustomer({
+        name: formData.name.trim(),
+        cpf: formData.cpf,
+        phone: formData.phone,
+        photo: photoUrl,
+        storeId: store.id,
+      });
+
+      setSuccess(true);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Erro ao cadastrar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (storeLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (storeError || !store) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="text-center">
+          <svg
+            className="h-16 w-16 mx-auto mb-4 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1}
+              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <h1 className="text-xl font-bold text-gray-700 mb-2">
+            Loja nao encontrada
+          </h1>
+          <p className="text-gray-500">Verifique o endereco e tente novamente</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div
+            className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            <svg
+              className="h-10 w-10 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            Cadastro realizado!
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Volte ao totem para continuar suas compras.
+          </p>
+          <p className="text-sm text-gray-400">
+            Voce ja pode fechar esta pagina.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div
+        className="text-white py-6 px-4"
+        style={{ backgroundColor: 'var(--color-primary)' }}
+      >
+        <div className="container mx-auto text-center">
+          {store.logo && (
+            <img
+              src={store.logo}
+              alt={store.name}
+              className="h-12 w-12 rounded-full mx-auto mb-2 bg-white object-cover"
+            />
+          )}
+          <h1 className="text-xl font-bold">{store.name}</h1>
+          <p className="text-white/80 mt-1 text-sm">Cadastro de Cliente</p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="p-4 pb-8">
+        <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-6">
+          {/* Photo */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Foto para reconhecimento facial *
+            </label>
+            <p className="text-xs text-gray-500 mb-3">
+              Tire uma foto do seu rosto para identificacao
+            </p>
+            {cameraActive ? (
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full rounded-lg"
+                />
+                <div className="flex gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="flex-1 py-3 rounded-lg text-white font-medium"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  >
+                    Tirar Foto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="flex-1 py-3 rounded-lg bg-gray-200 text-gray-700 font-medium"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : photo ? (
+              <div className="relative">
+                <img
+                  src={photo}
+                  alt="Foto do cliente"
+                  className="w-full rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  Camera
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Galeria
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
+            )}
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
+
+          {/* Name */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nome completo *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                setError(null);
+              }}
+              placeholder="Digite seu nome"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+              required
+            />
+          </div>
+
+          {/* CPF */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              CPF *
+            </label>
+            <input
+              type="tel"
+              value={formatCpf(formData.cpf)}
+              onChange={handleCpfChange}
+              placeholder="000.000.000-00"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+              required
+            />
+          </div>
+
+          {/* Phone */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Telefone com DDD *
+            </label>
+            <input
+              type="tel"
+              value={formatPhone(formData.phone)}
+              onChange={handlePhoneChange}
+              placeholder="(00) 00000-0000"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+              required
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-600 text-center">{error}</p>
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 rounded-xl text-white font-bold text-lg disabled:opacity-50 transition-all"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Cadastrando...
+              </span>
+            ) : (
+              'Cadastrar'
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
