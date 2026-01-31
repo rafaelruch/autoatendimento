@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../context/StoreContext';
-import { getCustomerByPhone } from '../services/api';
+import { createIdentificationSession, checkIdentificationSession } from '../services/api';
 import type { Customer } from '../types';
 
 interface IdentificationQRScreenProps {
@@ -14,52 +14,62 @@ export function IdentificationQRScreen({
 }: IdentificationQRScreenProps) {
   const { store } = useStore();
   const [countdown, setCountdown] = useState(120);
-  const [lastCheckedPhone, setLastCheckedPhone] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(true);
 
-  // Generate identification URL
-  const identificationUrl = `${window.location.origin}/${store?.slug}/identificar`;
+  // Create a session when component mounts
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const createSession = async () => {
+      try {
+        const response = await createIdentificationSession(store.id);
+        setSessionToken(response.data.token);
+      } catch (error) {
+        console.error('Error creating identification session:', error);
+      } finally {
+        setIsCreatingSession(false);
+      }
+    };
+
+    createSession();
+  }, [store?.id]);
+
+  // Generate identification URL with token
+  const identificationUrl = sessionToken
+    ? `${window.location.origin}/${store?.slug}/identificar?token=${sessionToken}`
+    : '';
 
   // Generate QR code using a simple API
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(identificationUrl)}`;
+  const qrCodeUrl = identificationUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(identificationUrl)}`
+    : '';
 
-  // Check if customer was identified via localStorage (set by mobile page)
+  // Check if session was claimed via API polling
   const checkForIdentification = useCallback(async () => {
-    const pendingPhone = localStorage.getItem(`pending_identification_${store?.id}`);
+    if (!sessionToken) return;
 
-    if (pendingPhone && pendingPhone !== lastCheckedPhone && store?.id) {
-      setLastCheckedPhone(pendingPhone);
+    try {
+      const response = await checkIdentificationSession(sessionToken);
 
-      try {
-        const response = await getCustomerByPhone(pendingPhone, store.id);
-        // Clear the pending identification
-        localStorage.removeItem(`pending_identification_${store.id}`);
-        onCustomerIdentified(response.data);
-      } catch {
-        // Customer not found yet, keep waiting
+      if (response.data.claimed && response.data.customer) {
+        onCustomerIdentified(response.data.customer);
       }
+    } catch {
+      // Session not found or expired, ignore
     }
-  }, [store?.id, lastCheckedPhone, onCustomerIdentified]);
+  }, [sessionToken, onCustomerIdentified]);
 
   // Poll for identification every 2 seconds
   useEffect(() => {
+    if (!sessionToken) return;
+
     const interval = setInterval(() => {
       checkForIdentification();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [checkForIdentification]);
-
-  // Also listen for storage events (cross-tab communication)
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === `pending_identification_${store?.id}` && e.newValue) {
-        checkForIdentification();
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [store?.id, checkForIdentification]);
+  }, [sessionToken, checkForIdentification]);
 
   // Countdown timer
   useEffect(() => {
@@ -103,11 +113,24 @@ export function IdentificationQRScreen({
           {/* QR Code */}
           <div className="flex justify-center mb-6">
             <div className="bg-white p-4 rounded-xl shadow-inner border-2 border-gray-100">
-              <img
-                src={qrCodeUrl}
-                alt="QR Code para identificacao"
-                className="w-64 h-64"
-              />
+              {isCreatingSession ? (
+                <div className="w-64 h-64 flex items-center justify-center">
+                  <div
+                    className="animate-spin rounded-full h-12 w-12 border-b-2"
+                    style={{ borderColor: 'var(--color-primary)' }}
+                  ></div>
+                </div>
+              ) : qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt="QR Code para identificacao"
+                  className="w-64 h-64"
+                />
+              ) : (
+                <div className="w-64 h-64 flex items-center justify-center text-gray-400">
+                  Erro ao gerar QR Code
+                </div>
+              )}
             </div>
           </div>
 

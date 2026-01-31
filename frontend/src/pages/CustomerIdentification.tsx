@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import { getCustomerByPhone, registerCustomer, uploadPublicCustomerPhoto } from '../services/api';
+import { getCustomerByPhone, registerCustomer, uploadPublicCustomerPhoto, claimIdentificationSession } from '../services/api';
 import type { Customer } from '../types';
 
 type IdentificationStep = 'phone' | 'register' | 'success';
 
 export function CustomerIdentification() {
   const { store, loading: storeLoading, error: storeError } = useStore();
+  const [searchParams] = useSearchParams();
+  const sessionToken = searchParams.get('token');
 
   const [step, setStep] = useState<IdentificationStep>('phone');
   const [phone, setPhone] = useState('');
@@ -152,8 +155,10 @@ export function CustomerIdentification() {
 
     try {
       const response = await getCustomerByPhone(phone, store.id);
-      // Customer found! Notify the totem via localStorage
-      localStorage.setItem(`pending_identification_${store.id}`, phone);
+      // Customer found! Claim the session to notify the totem
+      if (sessionToken) {
+        await claimIdentificationSession(sessionToken, response.data.id);
+      }
       setIdentifiedCustomer(response.data);
       setStep('success');
     } catch (err: unknown) {
@@ -212,8 +217,10 @@ export function CustomerIdentification() {
         storeId: store.id,
       });
 
-      // Notify the totem via localStorage
-      localStorage.setItem(`pending_identification_${store.id}`, phone);
+      // Claim the session to notify the totem
+      if (sessionToken) {
+        await claimIdentificationSession(sessionToken, response.data.id);
+      }
       setIdentifiedCustomer(response.data);
       setStep('success');
     } catch (err: unknown) {

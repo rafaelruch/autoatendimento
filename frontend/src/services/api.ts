@@ -234,6 +234,16 @@ export const registerCustomer = (data: {
 }) =>
   api.post<Customer>(`/customers/register?storeId=${data.storeId}`, data);
 
+// Identification Session APIs (for totem-mobile communication)
+export const createIdentificationSession = (storeId: string) =>
+  api.post<{ token: string }>('/identification/session', { storeId });
+
+export const claimIdentificationSession = (token: string, customerId: string) =>
+  api.post<{ success: boolean }>('/identification/claim', { token, customerId });
+
+export const checkIdentificationSession = (token: string) =>
+  api.get<{ claimed: boolean; customer?: Customer }>(`/identification/check/${token}`);
+
 export const adminCreateCustomer = (data: Partial<Customer> & { storeId: string }) =>
   api.post<Customer>(`/customers?storeId=${data.storeId}`, data);
 

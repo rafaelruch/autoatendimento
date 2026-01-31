@@ -12,6 +12,7 @@ import { storeRoutes } from './routes/storeRoutes.js';
 import { superadminRoutes } from './routes/superadminRoutes.js';
 import { uploadRoutes } from './routes/uploadRoutes.js';
 import { customerRoutes } from './routes/customerRoutes.js';
+import { identificationRoutes } from './routes/identificationRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -40,6 +41,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/identification', identificationRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {
