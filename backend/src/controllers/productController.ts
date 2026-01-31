@@ -69,7 +69,18 @@ export async function getProductByBarcode(req: Request, res: Response, next: Nex
 
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { name, description, price, image, category, stock, barcode, storeId } = req.body;
+    const { name, description, price, image, category, stock, barcode, storeId: bodyStoreId } = req.body;
+
+    // Get storeId from authenticated user if not provided in body
+    let storeId = bodyStoreId;
+
+    if (!storeId && req.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { storeId: true },
+      });
+      storeId = user?.storeId;
+    }
 
     if (!storeId) {
       throw createError('storeId é obrigatório', 400);
