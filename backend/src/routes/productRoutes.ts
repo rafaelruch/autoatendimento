@@ -9,4 +9,4 @@ export const productRoutes = Router();
 
 productRoutes.get('/', getProducts);
 productRoutes.get('/:id', getProduct);
-productRoutes.get('/barcode/:barcode', getProductByBarcode);
+productRoutes.get('/barcode/:barcode/:storeId', getProductByBarcode);
