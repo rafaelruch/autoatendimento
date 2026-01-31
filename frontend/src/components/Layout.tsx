@@ -57,7 +57,7 @@ export function Layout({ children, hideCartButton = false }: LayoutProps) {
 
       {/* Floating Cart Button - Green color to encourage purchase */}
       {!hideCartButton && itemCount > 0 && (
-        <div className="fixed bottom-4 left-4 sm:left-60 right-4 z-50">
+        <div className="fixed bottom-4 left-4 right-4 z-50">
           <button
             onClick={() => navigate(`/${slug}/carrinho`)}
             className="w-full py-4 sm:py-5 rounded-xl sm:rounded-2xl text-white font-semibold flex items-center justify-between px-4 sm:px-6 shadow-2xl bg-green-600 hover:bg-green-700 touch-manipulation active:scale-[0.98] transition-all"

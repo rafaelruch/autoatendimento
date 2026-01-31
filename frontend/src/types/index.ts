@@ -39,7 +39,8 @@ export interface Product {
   id: string;
   name: string;
   description: string | null;
-  price: number;
+  costPrice: number | null;  // Valor de compra
+  price: number;             // Valor de venda
   image: string | null;
   category: string | null;
   stock: number;

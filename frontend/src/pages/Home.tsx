@@ -5,6 +5,7 @@ import { BarcodeScanner } from '../components/BarcodeScanner';
 import { getStoreProducts, getProductByBarcode } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
+import { useScanner } from '../context/ScannerContext';
 import toast from 'react-hot-toast';
 import type { Product } from '../types';
 
@@ -12,15 +13,15 @@ export function Home() {
   const { slug } = useParams<{ slug: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showScanner, setShowScanner] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [welcomeExiting, setWelcomeExiting] = useState(false);
   const categoriesRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
   const { store } = useStore();
+  const { showScanner, closeScanner } = useScanner();
 
   // Barcode scanner input buffer (for USB barcode readers)
   const barcodeBufferRef = useRef<string>('');
@@ -120,22 +121,22 @@ export function Home() {
     }, 500);
   };
 
-  // Check scroll position
+  // Check scroll position for horizontal slider
   const checkScroll = () => {
     const el = categoriesRef.current;
     if (el) {
-      setCanScrollUp(el.scrollTop > 0);
-      setCanScrollDown(el.scrollTop < el.scrollHeight - el.clientHeight - 1);
+      setCanScrollLeft(el.scrollLeft > 0);
+      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
     }
   };
 
-  // Scroll categories
-  const scrollCategories = (direction: 'up' | 'down') => {
+  // Scroll categories horizontally
+  const scrollCategories = (direction: 'left' | 'right') => {
     const el = categoriesRef.current;
     if (el) {
-      const scrollAmount = 150;
+      const scrollAmount = 200;
       el.scrollBy({
-        top: direction === 'up' ? -scrollAmount : scrollAmount,
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
     }
@@ -285,146 +286,113 @@ export function Home() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Categories Sidebar */}
-      <aside className="w-56 flex-shrink-0 bg-white shadow-lg flex flex-col h-full">
-        {/* Header */}
-        <div className="p-4 border-b flex-shrink-0">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Categorias
-          </h2>
-        </div>
-
-        {/* Scroll Up Button */}
-        <button
-          onClick={() => scrollCategories('up')}
-          disabled={!canScrollUp}
-          className={`flex-shrink-0 w-full py-3 flex items-center justify-center border-b transition-all touch-manipulation ${
-            canScrollUp
-              ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-          }`}
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-          </svg>
-        </button>
-
-        {/* Categories List */}
-        <div
-          ref={categoriesRef}
-          onScroll={checkScroll}
-          className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide"
-        >
-          {/* All products button */}
+    <div className="flex flex-col h-full">
+      {/* Horizontal Category Slider */}
+      <div className="bg-white shadow-md flex-shrink-0">
+        <div className="flex items-center gap-2 px-2 py-3">
+          {/* Scroll Left Button */}
           <button
-            onClick={() => setSelectedCategory(null)}
-            className={`w-full text-left px-4 py-4 rounded-xl font-medium transition-all touch-manipulation ${
-              selectedCategory === null
-                ? 'text-white shadow-lg scale-[1.02]'
-                : 'text-gray-700 bg-gray-100 hover:bg-gray-200 active:scale-95'
+            onClick={() => scrollCategories('left')}
+            disabled={!canScrollLeft}
+            className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-90 ${
+              canScrollLeft
+                ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                : 'bg-gray-100 text-gray-300 cursor-not-allowed'
             }`}
-            style={
-              selectedCategory === null
-                ? { backgroundColor: 'var(--color-primary)' }
-                : undefined
-            }
           >
-            <div className="flex items-center gap-3">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                />
-              </svg>
-              <div>
-                <span className="block text-base">Todos</span>
-                <span className="text-xs opacity-75">{products.length} itens</span>
-              </div>
-            </div>
-          </button>
-
-          {/* Category buttons */}
-          {categories.map((category) => {
-            const count = products.filter((p) => p.category === category).length;
-            const isSelected = selectedCategory === category;
-
-            return (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`w-full text-left px-4 py-4 rounded-xl font-medium transition-all touch-manipulation ${
-                  isSelected
-                    ? 'text-white shadow-lg scale-[1.02]'
-                    : 'text-gray-700 bg-gray-100 hover:bg-gray-200 active:scale-95'
-                }`}
-                style={
-                  isSelected
-                    ? { backgroundColor: 'var(--color-primary)' }
-                    : undefined
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <CategoryIcon category={category} />
-                  <div>
-                    <span className="block text-base">{category}</span>
-                    <span className="text-xs opacity-75">{count} itens</span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Scroll Down Button */}
-        <button
-          onClick={() => scrollCategories('down')}
-          disabled={!canScrollDown}
-          className={`flex-shrink-0 w-full py-3 flex items-center justify-center border-t transition-all touch-manipulation ${
-            canScrollDown
-              ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-          }`}
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Barcode Scanner Button */}
-        <div className="p-3 border-t flex-shrink-0">
-          <button
-            onClick={() => setShowScanner(true)}
-            className="w-full flex items-center justify-center gap-2 text-white px-4 py-4 rounded-xl transition-colors touch-manipulation btn-primary active:scale-95"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-              />
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="font-medium">Escanear Código</span>
+          </button>
+
+          {/* Categories Horizontal Scroll */}
+          <div
+            ref={categoriesRef}
+            onScroll={checkScroll}
+            className="flex-1 overflow-x-auto flex gap-2 scrollbar-hide scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {/* All products button */}
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`flex-shrink-0 px-5 py-3 rounded-xl font-medium transition-all touch-manipulation active:scale-95 ${
+                selectedCategory === null
+                  ? 'text-white shadow-lg'
+                  : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+              }`}
+              style={
+                selectedCategory === null
+                  ? { backgroundColor: 'var(--color-primary)' }
+                  : undefined
+              }
+            >
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                  />
+                </svg>
+                <span className="text-base">Todos ({products.length})</span>
+              </div>
+            </button>
+
+            {/* Category buttons */}
+            {categories.map((category) => {
+              const count = products.filter((p) => p.category === category).length;
+              const isSelected = selectedCategory === category;
+
+              return (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`flex-shrink-0 px-5 py-3 rounded-xl font-medium transition-all touch-manipulation active:scale-95 ${
+                    isSelected
+                      ? 'text-white shadow-lg'
+                      : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                  }`}
+                  style={
+                    isSelected
+                      ? { backgroundColor: 'var(--color-primary)' }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <CategoryIcon category={category} />
+                    <span className="text-base">{category} ({count})</span>
+                  </div>
+                </button>
+              );
+            })}
+
+          </div>
+
+          {/* Scroll Right Button */}
+          <button
+            onClick={() => scrollCategories('right')}
+            disabled={!canScrollRight}
+            className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-90 ${
+              canScrollRight
+                ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+            }`}
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
-      </aside>
+      </div>
 
-      {/* Products Area */}
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* Products Area - Full Width */}
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-gray-800">
             {selectedCategory || 'Todos os Produtos'}
@@ -437,7 +405,7 @@ export function Home() {
         <ProductList products={filteredProducts} />
       </main>
 
-      {showScanner && <BarcodeScanner onClose={() => setShowScanner(false)} />}
+      {showScanner && <BarcodeScanner onClose={closeScanner} />}
     </div>
   );
 }

@@ -98,7 +98,8 @@ model Product {
   id          String      @id @default(uuid())
   name        String
   description String?
-  price       Decimal     @db.Decimal(10, 2)
+  costPrice   Decimal?    @db.Decimal(10, 2)  // Valor de compra
+  price       Decimal     @db.Decimal(10, 2)  // Valor de venda
   image       String?
   category    String?
   stock       Int         @default(0)

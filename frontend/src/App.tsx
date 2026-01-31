@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
 import { StoreProvider } from './context/StoreContext';
+import { ScannerProvider } from './context/ScannerContext';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { CartPage } from './pages/CartPage';
@@ -22,7 +23,8 @@ import { LandingPage } from './pages/LandingPage';
 function StoreLayout() {
   return (
     <StoreProvider>
-      <Routes>
+      <ScannerProvider>
+        <Routes>
         <Route
           index
           element={
@@ -71,7 +73,8 @@ function StoreLayout() {
             </Layout>
           }
         />
-      </Routes>
+        </Routes>
+      </ScannerProvider>
     </StoreProvider>
   );
 }

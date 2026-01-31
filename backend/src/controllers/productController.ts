@@ -14,6 +14,7 @@ export async function getProducts(_req: Request, res: Response, next: NextFuncti
 
     res.json(products.map(p => ({
       ...p,
+      costPrice: p.costPrice ? Number(p.costPrice) : null,
       price: Number(p.price),
     })));
   } catch (error) {
@@ -35,6 +36,7 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
 
     res.json({
       ...product,
+      costPrice: product.costPrice ? Number(product.costPrice) : null,
       price: Number(product.price),
     });
   } catch (error) {
@@ -60,6 +62,7 @@ export async function getProductByBarcode(req: Request, res: Response, next: Nex
 
     res.json({
       ...product,
+      costPrice: product.costPrice ? Number(product.costPrice) : null,
       price: Number(product.price),
     });
   } catch (error) {
@@ -69,7 +72,7 @@ export async function getProductByBarcode(req: Request, res: Response, next: Nex
 
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { name, description, price, image, category, stock, barcode, storeId: bodyStoreId } = req.body;
+    const { name, description, costPrice, price, image, category, stock, barcode, storeId: bodyStoreId } = req.body;
 
     // Get storeId from authenticated user if not provided in body
     let storeId = bodyStoreId;
@@ -90,6 +93,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
       data: {
         name,
         description,
+        costPrice: costPrice || null,
         price,
         image,
         category,
@@ -101,6 +105,7 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 
     res.status(201).json({
       ...product,
+      costPrice: product.costPrice ? Number(product.costPrice) : null,
       price: Number(product.price),
     });
   } catch (error) {
@@ -111,13 +116,14 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
 export async function updateProduct(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const { name, description, price, image, category, stock, barcode, active } = req.body;
+    const { name, description, costPrice, price, image, category, stock, barcode, active } = req.body;
 
     const product = await prisma.product.update({
       where: { id },
       data: {
         name,
         description,
+        costPrice: costPrice !== undefined ? costPrice : undefined,
         price,
         image,
         category,
@@ -129,6 +135,7 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
 
     res.json({
       ...product,
+      costPrice: product.costPrice ? Number(product.costPrice) : null,
       price: Number(product.price),
     });
   } catch (error) {
@@ -162,6 +169,7 @@ export async function getProductsByStore(req: Request, res: Response, next: Next
 
     res.json(products.map(p => ({
       ...p,
+      costPrice: p.costPrice ? Number(p.costPrice) : null,
       price: Number(p.price),
     })));
   } catch (error) {
@@ -180,12 +188,13 @@ export async function exportProducts(req: Request, res: Response, next: NextFunc
     });
 
     // CSV header
-    const csvHeader = 'nome;descricao;preco;categoria;estoque;codigo_barras;ativo;imagem\n';
+    const csvHeader = 'nome;descricao;custo;preco;categoria;estoque;codigo_barras;ativo;imagem\n';
 
     // CSV rows
     const csvRows = products.map(p => {
       const nome = (p.name || '').replace(/;/g, ',').replace(/\n/g, ' ');
       const descricao = (p.description || '').replace(/;/g, ',').replace(/\n/g, ' ');
+      const custo = p.costPrice ? Number(p.costPrice).toFixed(2).replace('.', ',') : '';
       const preco = Number(p.price).toFixed(2).replace('.', ',');
       const categoria = (p.category || '').replace(/;/g, ',');
       const estoque = p.stock || 0;
@@ -193,7 +202,7 @@ export async function exportProducts(req: Request, res: Response, next: NextFunc
       const ativo = p.active ? 'sim' : 'nao';
       const imagem = p.image || '';
 
-      return `${nome};${descricao};${preco};${categoria};${estoque};${codigoBarras};${ativo};${imagem}`;
+      return `${nome};${descricao};${custo};${preco};${categoria};${estoque};${codigoBarras};${ativo};${imagem}`;
     }).join('\n');
 
     const csv = csvHeader + csvRows;
@@ -211,10 +220,10 @@ export async function exportProducts(req: Request, res: Response, next: NextFunc
 
 // Get CSV template for import
 export async function getProductTemplate(_req: Request, res: Response) {
-  const csvHeader = 'nome;descricao;preco;categoria;estoque;codigo_barras;ativo;imagem\n';
-  const csvExample = 'Coca-Cola 350ml;Refrigerante Coca-Cola lata 350ml;5,99;Bebidas;100;7891234567890;sim;\n' +
-                     'Pao Frances;Pao frances unidade;0,75;Padaria;50;;sim;\n' +
-                     'Leite Integral 1L;Leite integral caixa 1 litro;6,49;Laticinios;30;7891234567891;sim;';
+  const csvHeader = 'nome;descricao;custo;preco;categoria;estoque;codigo_barras;ativo;imagem\n';
+  const csvExample = 'Coca-Cola 350ml;Refrigerante Coca-Cola lata 350ml;4,50;5,99;Bebidas;100;7891234567890;sim;\n' +
+                     'Pao Frances;Pao frances unidade;0,50;0,75;Padaria;50;;sim;\n' +
+                     'Leite Integral 1L;Leite integral caixa 1 litro;5,20;6,49;Laticinios;30;7891234567891;sim;';
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename=modelo-produtos.csv');
@@ -272,18 +281,20 @@ export async function importProducts(req: AuthRequest, res: Response, next: Next
 
         const nome = columns[0]?.trim();
         const descricao = columns[1]?.trim() || null;
-        const precoStr = columns[2]?.trim().replace(',', '.') || '0';
-        const categoria = columns[3]?.trim() || null;
-        const estoqueStr = columns[4]?.trim() || '0';
-        const codigoBarras = columns[5]?.trim() || null;
-        const ativoStr = columns[6]?.trim().toLowerCase() || 'sim';
-        const imagem = columns[7]?.trim() || null;
+        const custoStr = columns[2]?.trim().replace(',', '.') || '';
+        const precoStr = columns[3]?.trim().replace(',', '.') || '0';
+        const categoria = columns[4]?.trim() || null;
+        const estoqueStr = columns[5]?.trim() || '0';
+        const codigoBarras = columns[6]?.trim() || null;
+        const ativoStr = columns[7]?.trim().toLowerCase() || 'sim';
+        const imagem = columns[8]?.trim() || null;
 
         if (!nome) {
           results.errors.push(`Linha ${i + 1}: nome é obrigatório`);
           continue;
         }
 
+        const custo = custoStr ? parseFloat(custoStr) : null;
         const preco = parseFloat(precoStr);
         if (isNaN(preco) || preco < 0) {
           results.errors.push(`Linha ${i + 1}: preço inválido`);
@@ -321,6 +332,7 @@ export async function importProducts(req: AuthRequest, res: Response, next: Next
             data: {
               name: nome,
               description: descricao,
+              costPrice: custo,
               price: preco,
               category: categoria,
               stock: isNaN(estoque) ? existingProduct.stock : estoque,
@@ -336,6 +348,7 @@ export async function importProducts(req: AuthRequest, res: Response, next: Next
             data: {
               name: nome,
               description: descricao,
+              costPrice: custo,
               price: preco,
               category: categoria,
               stock: isNaN(estoque) ? 0 : estoque,

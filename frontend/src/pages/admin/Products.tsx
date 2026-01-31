@@ -25,6 +25,7 @@ export function AdminProducts() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    costPrice: '',
     price: '',
     category: '',
     stock: '',
@@ -32,6 +33,15 @@ export function AdminProducts() {
     image: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Calculate profit margin percentage
+  const calculateMargin = (cost: string | number | null, sale: string | number): string => {
+    const costNum = typeof cost === 'string' ? parseFloat(cost) : cost;
+    const saleNum = typeof sale === 'string' ? parseFloat(sale) : sale;
+    if (!costNum || !saleNum || costNum <= 0 || saleNum <= 0) return '-';
+    const margin = ((saleNum - costNum) / costNum) * 100;
+    return `${margin.toFixed(1)}%`;
+  };
   const navigate = useNavigate();
 
   // Get storeId from admin user or localStorage
@@ -86,6 +96,7 @@ export function AdminProducts() {
       setFormData({
         name: product.name,
         description: product.description || '',
+        costPrice: product.costPrice?.toString() || '',
         price: product.price.toString(),
         category: product.category || '',
         stock: product.stock.toString(),
@@ -97,6 +108,7 @@ export function AdminProducts() {
       setFormData({
         name: '',
         description: '',
+        costPrice: '',
         price: '',
         category: '',
         stock: '',
@@ -119,6 +131,7 @@ export function AdminProducts() {
     const data = {
       name: formData.name,
       description: formData.description || null,
+      costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
       price: parseFloat(formData.price),
       category: formData.category || null,
       stock: parseInt(formData.stock),
@@ -337,7 +350,13 @@ export function AdminProducts() {
                   Categoria
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Preço
+                  Custo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Venda
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Margem
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Estoque
@@ -346,7 +365,7 @@ export function AdminProducts() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Ações
+                  Acoes
                 </th>
               </tr>
             </thead>
@@ -376,8 +395,26 @@ export function AdminProducts() {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {product.category || '-'}
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {product.costPrice
+                      ? `R$ ${product.costPrice.toFixed(2).replace('.', ',')}`
+                      : '-'}
+                  </td>
                   <td className="px-6 py-4 text-sm font-medium">
                     R$ {product.price.toFixed(2).replace('.', ',')}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`font-medium ${
+                      product.costPrice && product.price
+                        ? ((product.price - product.costPrice) / product.costPrice) * 100 >= 30
+                          ? 'text-green-600'
+                          : ((product.price - product.costPrice) / product.costPrice) * 100 >= 15
+                            ? 'text-yellow-600'
+                            : 'text-red-600'
+                        : ''
+                    }`}>
+                      {calculateMargin(product.costPrice, product.price)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-sm">{product.stock}</td>
                   <td className="px-6 py-4">
@@ -409,7 +446,7 @@ export function AdminProducts() {
               ))}
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     Nenhum produto cadastrado
                   </td>
                 </tr>
@@ -452,32 +489,69 @@ export function AdminProducts() {
                   rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Preço *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
+              {/* Pricing Section */}
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <h4 className="text-sm font-semibold text-gray-700">Precos</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Valor de Compra
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.costPrice}
+                      onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Valor de Venda *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="0,00"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Estoque *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
+                {/* Profit Margin Display */}
+                {formData.costPrice && formData.price && (
+                  <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                    <span className="text-sm text-gray-600">Margem de Lucro:</span>
+                    <span className={`font-bold text-lg ${
+                      parseFloat(formData.price) > parseFloat(formData.costPrice)
+                        ? ((parseFloat(formData.price) - parseFloat(formData.costPrice)) / parseFloat(formData.costPrice)) * 100 >= 30
+                          ? 'text-green-600'
+                          : ((parseFloat(formData.price) - parseFloat(formData.costPrice)) / parseFloat(formData.costPrice)) * 100 >= 15
+                            ? 'text-yellow-600'
+                            : 'text-red-600'
+                        : 'text-red-600'
+                    }`}>
+                      {calculateMargin(formData.costPrice, formData.price)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Estoque *
+                </label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
