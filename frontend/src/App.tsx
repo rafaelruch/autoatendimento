@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
+import { PaymentSuccess } from './pages/PaymentSuccess';
 import { AdminLogin } from './pages/admin/Login';
 import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminProducts } from './pages/admin/Products';
@@ -43,6 +44,30 @@ function StoreLayout() {
           element={
             <Layout hideCartButton>
               <CheckoutPage />
+            </Layout>
+          }
+        />
+        <Route
+          path="pagamento/sucesso"
+          element={
+            <Layout hideCartButton>
+              <PaymentSuccess />
+            </Layout>
+          }
+        />
+        <Route
+          path="pagamento/falha"
+          element={
+            <Layout hideCartButton>
+              <PaymentSuccess />
+            </Layout>
+          }
+        />
+        <Route
+          path="pagamento/pendente"
+          element={
+            <Layout hideCartButton>
+              <PaymentSuccess />
             </Layout>
           }
         />

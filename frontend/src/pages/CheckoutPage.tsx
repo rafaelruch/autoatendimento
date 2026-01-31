@@ -51,6 +51,8 @@ export function CheckoutPage() {
         if (res.data.status === 'FINISHED' || res.data.status === 'PAID') {
           clearInterval(interval);
           clearCart();
+          // Reset welcome screen for next customer
+          sessionStorage.removeItem(`welcome_dismissed_${slug}`);
           toast.success('Pagamento aprovado!');
           navigate(`/${slug}/pagamento/sucesso`);
         } else if (res.data.status === 'CANCELED' || res.data.status === 'ERROR') {
@@ -80,6 +82,8 @@ export function CheckoutPage() {
         if (res.data.status === 'PAID') {
           clearInterval(interval);
           clearCart();
+          // Reset welcome screen for next customer
+          sessionStorage.removeItem(`welcome_dismissed_${slug}`);
           toast.success('Pagamento PIX aprovado!');
           navigate(`/${slug}/pagamento/sucesso`);
         } else if (res.data.status === 'CANCELLED' || res.data.status === 'REFUNDED') {

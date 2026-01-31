@@ -72,20 +72,43 @@ export class MercadoPagoService implements IPaymentService {
         };
       }
 
-      const response = await preference.create({
-        body: {
-          items,
-          external_reference: params.orderId,
-          back_urls: {
-            success: `${frontendUrl}/${params.storeSlug}/pagamento/sucesso`,
-            failure: `${frontendUrl}/${params.storeSlug}/pagamento/falha`,
-            pending: `${frontendUrl}/${params.storeSlug}/pagamento/pendente`,
-          },
-          auto_return: 'approved',
-          notification_url: `${backendUrl}/api/payments/webhook/mercadopago`,
-          ...(paymentMethods && { payment_methods: paymentMethods }),
-        },
-      });
+      // Garantir que storeSlug está definido
+      const storeSlug = params.storeSlug || 'loja';
+
+      // Verificar se URLs são válidas (não localhost) - Mercado Pago rejeita localhost
+      const isProduction = !frontendUrl.includes('localhost') && !frontendUrl.includes('127.0.0.1');
+
+      interface CardPreferenceBody {
+        items: typeof items;
+        external_reference: string;
+        back_urls?: {
+          success: string;
+          failure: string;
+          pending: string;
+        };
+        auto_return?: 'approved' | 'all';
+        payment_methods?: typeof paymentMethods;
+        notification_url?: string;
+      }
+
+      const preferenceBody: CardPreferenceBody = {
+        items,
+        external_reference: params.orderId,
+        ...(paymentMethods && { payment_methods: paymentMethods }),
+      };
+
+      // Só adicionar back_urls e auto_return em produção (Mercado Pago rejeita localhost)
+      if (isProduction) {
+        preferenceBody.back_urls = {
+          success: `${frontendUrl}/${storeSlug}/pagamento/sucesso`,
+          failure: `${frontendUrl}/${storeSlug}/pagamento/falha`,
+          pending: `${frontendUrl}/${storeSlug}/pagamento/pendente`,
+        };
+        preferenceBody.auto_return = 'approved';
+        preferenceBody.notification_url = `${backendUrl}/api/payments/webhook/mercadopago`;
+      }
+
+      const response = await preference.create({ body: preferenceBody });
 
       return {
         success: true,
@@ -108,50 +131,133 @@ export class MercadoPagoService implements IPaymentService {
     frontendUrl: string,
     backendUrl: string
   ): Promise<PaymentResult> {
+    const accessToken = config.mpAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      return { success: false, error: 'Mercado Pago não configurado' };
+    }
+
+    const client = this.getClient(accessToken);
+
+    // Verificar se notification_url é válida (não localhost)
+    const isValidWebhookUrl = !backendUrl.includes('localhost') && !backendUrl.includes('127.0.0.1');
+
+    // Tentar criar PIX direto com QR Code
     try {
-      const accessToken = config.mpAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN;
-
-      if (!accessToken) {
-        return { success: false, error: 'Mercado Pago não configurado' };
-      }
-
-      const client = this.getClient(accessToken);
       const payment = new Payment(client);
 
       // Descrição do pedido
       const description = params.items.map(i => `${i.quantity}x ${i.title}`).join(', ').substring(0, 256);
 
-      const paymentData = await payment.create({
-        body: {
-          transaction_amount: params.total,
-          description: description || 'Pedido',
-          payment_method_id: 'pix',
-          external_reference: params.orderId,
-          notification_url: `${backendUrl}/api/payments/webhook/mercadopago`,
-          payer: {
-            email: 'cliente@email.com', // Email genérico para PIX
-          },
+      const paymentBody: {
+        transaction_amount: number;
+        description: string;
+        payment_method_id: string;
+        external_reference: string;
+        payer: { email: string };
+        notification_url?: string;
+      } = {
+        transaction_amount: params.total,
+        description: description || 'Pedido',
+        payment_method_id: 'pix',
+        external_reference: params.orderId,
+        payer: {
+          email: 'cliente@email.com', // Email genérico para PIX
         },
-      });
+      };
+
+      // Só adicionar notification_url se for URL válida (produção)
+      if (isValidWebhookUrl) {
+        paymentBody.notification_url = `${backendUrl}/api/payments/webhook/mercadopago`;
+      }
+
+      const paymentData = await payment.create({ body: paymentBody });
 
       // Extrair dados do PIX
       const pixData = paymentData.point_of_interaction?.transaction_data;
 
-      if (!pixData?.qr_code) {
-        console.error('PIX data not found:', paymentData);
-        return { success: false, error: 'Erro ao gerar QR Code PIX' };
+      if (pixData?.qr_code) {
+        return {
+          success: true,
+          preferenceId: String(paymentData.id),
+          qrCode: pixData.qr_code,
+          qrCodeBase64: pixData.qr_code_base64,
+          // Para PIX direto, não há redirect - o frontend mostra o QR Code
+          initPoint: undefined,
+        };
       }
+    } catch (error) {
+      // Log error but continue to fallback
+      console.warn('PIX direto falhou, usando Checkout Pro:', error);
+    }
+
+    // Fallback: usar Checkout Pro com PIX (redirect)
+    // Isso funciona mesmo se a conta não tiver chave PIX configurada
+    try {
+      const preference = new Preference(client);
+
+      const items = params.items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        currency_id: 'BRL' as const,
+      }));
+
+      // Garantir que storeSlug está definido
+      const storeSlug = params.storeSlug || 'loja';
+
+      interface PreferenceBody {
+        items: typeof items;
+        external_reference: string;
+        back_urls: {
+          success: string;
+          failure: string;
+          pending: string;
+        };
+        auto_return: 'approved' | 'all';
+        payment_methods: {
+          excluded_payment_types: Array<{ id: string }>;
+        };
+        notification_url?: string;
+      }
+
+      const preferenceBody: PreferenceBody = {
+        items,
+        external_reference: params.orderId,
+        back_urls: {
+          success: `${frontendUrl}/${storeSlug}/pagamento/sucesso`,
+          failure: `${frontendUrl}/${storeSlug}/pagamento/falha`,
+          pending: `${frontendUrl}/${storeSlug}/pagamento/pendente`,
+        },
+        auto_return: 'approved',
+        // Apenas PIX no checkout
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'credit_card' },
+            { id: 'debit_card' },
+            { id: 'ticket' },
+            { id: 'atm' },
+            { id: 'prepaid_card' },
+          ],
+        },
+      };
+
+      // Só adicionar notification_url se for URL válida (produção)
+      if (isValidWebhookUrl) {
+        preferenceBody.notification_url = `${backendUrl}/api/payments/webhook/mercadopago`;
+      }
+
+      const response = await preference.create({ body: preferenceBody });
 
       return {
         success: true,
-        preferenceId: String(paymentData.id),
-        qrCode: pixData.qr_code,
-        qrCodeBase64: pixData.qr_code_base64,
-        // Para PIX direto, não há redirect - o frontend mostra o QR Code
-        initPoint: undefined,
+        preferenceId: response.id,
+        initPoint: response.init_point,
+        // Sem QR code - vai redirecionar para Mercado Pago
       };
     } catch (error) {
-      console.error('Mercado Pago PIX error:', error);
+      console.error('Mercado Pago PIX fallback error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro ao criar pagamento PIX',
