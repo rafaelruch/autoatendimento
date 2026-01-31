@@ -21,4 +21,11 @@ router.post(
   uploadImageHandler
 );
 
+// Upload customer photo - public (for self-service registration)
+router.post(
+  '/customer-photo',
+  uploadImage.single('image'),
+  uploadImageHandler
+);
+
 export const uploadRoutes = router;

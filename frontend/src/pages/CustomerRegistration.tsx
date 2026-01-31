@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import { registerCustomer, uploadCustomerPhoto } from '../services/api';
+import { registerCustomer, uploadPublicCustomerPhoto } from '../services/api';
 
 export function CustomerRegistration() {
   const { store, loading: storeLoading, error: storeError } = useStore();
@@ -164,7 +164,7 @@ export function CustomerRegistration() {
 
     try {
       // Upload photo (required)
-      const uploadResponse = await uploadCustomerPhoto(photoFile);
+      const uploadResponse = await uploadPublicCustomerPhoto(photoFile);
       const photoUrl = uploadResponse.data.url;
 
       // Register customer

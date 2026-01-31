@@ -190,6 +190,17 @@ export const uploadCustomerPhoto = (file: File) => {
   });
 };
 
+// Public upload for self-service registration (no auth required)
+export const uploadPublicCustomerPhoto = (file: File) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  return api.post<{ url: string }>('/upload/customer-photo', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
 // Admin - Customers
 export const adminGetCustomers = (
   storeId: string,

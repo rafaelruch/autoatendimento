@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { getCustomerByPhone, registerCustomer, uploadCustomerPhoto } from '../services/api';
+import { getCustomerByPhone, registerCustomer, uploadPublicCustomerPhoto } from '../services/api';
 import type { Customer } from '../types';
 
 type IdentificationStep = 'phone' | 'register' | 'success';
@@ -200,7 +200,7 @@ export function CustomerIdentification() {
 
     try {
       // Upload photo
-      const uploadResponse = await uploadCustomerPhoto(photoFile);
+      const uploadResponse = await uploadPublicCustomerPhoto(photoFile);
       const photoUrl = uploadResponse.data.url;
 
       // Register customer
