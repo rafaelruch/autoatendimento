@@ -36,6 +36,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const response = await getStore(slug);
         setStore(response.data);
 
+        // Set page title
+        document.title = `${response.data.name} | ruchmarket`;
+
         // Apply theme colors
         const root = document.documentElement;
         root.style.setProperty('--color-primary', response.data.primaryColor);

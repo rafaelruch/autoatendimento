@@ -57,18 +57,18 @@ export function Layout({ children, hideCartButton = false }: LayoutProps) {
 
       {/* Floating Cart Button - Green color to encourage purchase */}
       {!hideCartButton && itemCount > 0 && (
-        <div className="fixed bottom-4 left-60 right-4 z-50">
+        <div className="fixed bottom-4 left-4 sm:left-60 right-4 z-50">
           <button
             onClick={() => navigate(`/${slug}/carrinho`)}
-            className="w-full py-4 rounded-xl text-white font-semibold flex items-center justify-between px-6 shadow-2xl bg-green-600 hover:bg-green-700 touch-manipulation active:scale-[0.98] transition-all"
+            className="w-full py-4 sm:py-5 rounded-xl sm:rounded-2xl text-white font-semibold flex items-center justify-between px-4 sm:px-6 shadow-2xl bg-green-600 hover:bg-green-700 touch-manipulation active:scale-[0.98] transition-all"
           >
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 rounded-full px-3 py-1">
-                <span>{itemCount}</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="bg-white/20 rounded-full px-2.5 sm:px-3 py-1">
+                <span className="text-sm sm:text-base">{itemCount}</span>
               </div>
-              <span>Ver Carrinho</span>
+              <span className="text-sm sm:text-base">Ver Carrinho</span>
             </div>
-            <span className="text-lg font-bold">
+            <span className="text-base sm:text-lg font-bold">
               R$ {total.toFixed(2).replace('.', ',')}
             </span>
           </button>

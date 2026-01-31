@@ -192,21 +192,21 @@ export function CheckoutPage() {
   // Show waiting screen when point payment is in progress
   if (pointStatus) {
     return (
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
+      <div className="h-full flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12 text-center w-full max-w-lg">
           <div
-            className="animate-spin rounded-full h-16 w-16 border-4 border-t-transparent mx-auto mb-6"
+            className="animate-spin rounded-full h-20 w-20 sm:h-24 sm:w-24 border-4 border-t-transparent mx-auto mb-8"
             style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
           ></div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Aguardando Pagamento</h2>
-          <p className="text-gray-600 mb-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Aguardando Pagamento</h2>
+          <p className="text-lg text-gray-600 mb-2">
             Por favor, realize o pagamento na maquininha.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mb-8">
             Status: <span className="font-medium">{pointStatus}</span>
           </p>
-          <div className="mt-8">
-            <p className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
+          <div className="py-6 px-8 rounded-xl mb-8" style={{ backgroundColor: 'var(--color-primary)', opacity: 0.1 }}>
+            <p className="text-4xl sm:text-5xl font-bold" style={{ color: 'var(--color-primary)' }}>
               R$ {total.toFixed(2).replace('.', ',')}
             </p>
           </div>
@@ -217,7 +217,7 @@ export function CheckoutPage() {
               setLoading(false);
               setLoadingMethod(null);
             }}
-            className="mt-6 text-gray-500 hover:text-gray-700 text-sm"
+            className="text-gray-500 hover:text-gray-700 text-base py-3 px-6"
           >
             Cancelar
           </button>
@@ -234,32 +234,32 @@ export function CheckoutPage() {
     };
 
     return (
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <div className="h-full flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center w-full max-w-lg my-4">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M12 6v12M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Pague com PIX</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Pague com PIX</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">
             Escaneie o QR Code ou copie o codigo
           </p>
 
           {/* QR Code */}
-          <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block mb-6">
+          <div className="bg-white p-3 sm:p-4 rounded-xl border-2 border-gray-200 inline-block mb-4">
             <img
               src={`data:image/png;base64,${pixData.qrCodeBase64}`}
               alt="QR Code PIX"
-              className="w-64 h-64"
+              className="w-48 h-48 sm:w-56 sm:h-56"
             />
           </div>
 
           {/* Total */}
-          <div className="mb-6">
+          <div className="mb-4">
             <p className="text-sm text-gray-500">Valor a pagar:</p>
-            <p className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
+            <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
               R$ {total.toFixed(2).replace('.', ',')}
             </p>
           </div>
@@ -267,9 +267,9 @@ export function CheckoutPage() {
           {/* Copy button */}
           <button
             onClick={copyPixCode}
-            className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors mb-4 flex items-center justify-center gap-2"
+            className="w-full py-3 sm:py-4 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors mb-4 flex items-center justify-center gap-2 text-base sm:text-lg"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
             </svg>
             Copiar codigo PIX
@@ -288,7 +288,7 @@ export function CheckoutPage() {
               setLoading(false);
               setLoadingMethod(null);
             }}
-            className="text-gray-500 hover:text-gray-700 text-sm"
+            className="text-gray-500 hover:text-gray-700 text-sm py-2"
           >
             Cancelar e escolher outro metodo
           </button>
@@ -298,113 +298,94 @@ export function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Finalizar Compra</h1>
-
-      {/* Order Summary */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Resumo do Pedido</h2>
-
-        <div className="space-y-3 mb-4">
-          {items.map((item) => (
-            <div key={item.product.id} className="flex justify-between text-sm">
-              <span className="text-gray-600">
-                {item.quantity}x {item.product.name}
-              </span>
-              <span className="font-medium">
-                R$ {(item.product.price * item.quantity).toFixed(2).replace('.', ',')}
-              </span>
-            </div>
-          ))}
+    <div className="h-full flex flex-col p-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center w-full">
+        {/* Total */}
+        <div className="text-center mb-6">
+          <p className="text-lg text-gray-600 mb-2">Total a pagar:</p>
+          <p className="text-4xl sm:text-5xl font-bold" style={{ color: 'var(--color-primary)' }}>
+            R$ {total.toFixed(2).replace('.', ',')}
+          </p>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="flex justify-between text-xl font-bold">
-            <span>Total:</span>
-            <span style={{ color: 'var(--color-primary)' }}>
-              R$ {total.toFixed(2).replace('.', ',')}
-            </span>
+        {/* Payment Methods - Large Buttons in 3 Columns */}
+        <div className="bg-white rounded-2xl shadow-lg p-5 sm:p-8">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-center">Escolha a forma de pagamento</h2>
+
+          <div className="grid grid-cols-3 gap-4 sm:gap-8">
+            {/* PIX Button */}
+            <button
+              onClick={() => handlePayment('PIX')}
+              disabled={loading}
+              className="p-6 sm:p-10 rounded-2xl border-3 border-gray-200 hover:border-green-500 transition-all flex flex-col items-center justify-center gap-4 sm:gap-6 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-green-50 min-h-[180px] sm:min-h-[280px]"
+            >
+              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                {loadingMethod === 'PIX' ? (
+                  <div className="animate-spin rounded-full h-10 w-10 sm:h-14 sm:w-14 border-b-2 border-green-600"></div>
+                ) : (
+                  <svg className="w-10 h-10 sm:w-14 sm:h-14 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 6v12M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-xl sm:text-3xl font-bold text-gray-800">PIX</p>
+                <p className="text-sm sm:text-base text-gray-500 mt-1">Instantaneo</p>
+              </div>
+            </button>
+
+            {/* Debit Card Button */}
+            <button
+              onClick={() => handlePayment('DEBIT_CARD')}
+              disabled={loading}
+              className="p-6 sm:p-10 rounded-2xl border-3 border-gray-200 hover:border-blue-500 transition-all flex flex-col items-center justify-center gap-4 sm:gap-6 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-blue-50 min-h-[180px] sm:min-h-[280px]"
+            >
+              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                {loadingMethod === 'DEBIT_CARD' ? (
+                  <div className="animate-spin rounded-full h-10 w-10 sm:h-14 sm:w-14 border-b-2 border-blue-600"></div>
+                ) : (
+                  <svg className="w-10 h-10 sm:w-14 sm:h-14 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-xl sm:text-3xl font-bold text-gray-800">Debito</p>
+                <p className="text-sm sm:text-base text-gray-500 mt-1">
+                  {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
+                </p>
+              </div>
+            </button>
+
+            {/* Credit Card Button */}
+            <button
+              onClick={() => handlePayment('CREDIT_CARD')}
+              disabled={loading}
+              className="p-6 sm:p-10 rounded-2xl border-3 border-gray-200 hover:border-purple-500 transition-all flex flex-col items-center justify-center gap-4 sm:gap-6 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-purple-50 min-h-[180px] sm:min-h-[280px]"
+            >
+              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                {loadingMethod === 'CREDIT_CARD' ? (
+                  <div className="animate-spin rounded-full h-10 w-10 sm:h-14 sm:w-14 border-b-2 border-purple-600"></div>
+                ) : (
+                  <svg className="w-10 h-10 sm:w-14 sm:h-14 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                )}
+              </div>
+              <div className="text-center">
+                <p className="text-xl sm:text-3xl font-bold text-gray-800">Credito</p>
+                <p className="text-sm sm:text-base text-gray-500 mt-1">
+                  {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
+                </p>
+              </div>
+            </button>
           </div>
+
+          <p className="text-base text-center text-gray-400 mt-6 sm:mt-8">
+            Pagamento 100% seguro
+          </p>
         </div>
-      </div>
-
-      {/* Payment Methods - Large Buttons in 3 Columns */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-6 text-center">Escolha a forma de pagamento</h2>
-
-        <div className="grid grid-cols-3 gap-4">
-          {/* PIX Button */}
-          <button
-            onClick={() => handlePayment('PIX')}
-            disabled={loading}
-            className="p-6 rounded-xl border-2 border-gray-200 hover:border-green-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-green-50 min-h-[180px]"
-          >
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-              {loadingMethod === 'PIX' ? (
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
-              ) : (
-                <svg className="w-10 h-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 6v12M6 12h12" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-800">PIX</p>
-              <p className="text-xs text-gray-500 mt-1">Instantaneo</p>
-            </div>
-          </button>
-
-          {/* Debit Card Button */}
-          <button
-            onClick={() => handlePayment('DEBIT_CARD')}
-            disabled={loading}
-            className="p-6 rounded-xl border-2 border-gray-200 hover:border-blue-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-blue-50 min-h-[180px]"
-          >
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-              {loadingMethod === 'DEBIT_CARD' ? (
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-              ) : (
-                <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              )}
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-800">Debito</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
-              </p>
-            </div>
-          </button>
-
-          {/* Credit Card Button */}
-          <button
-            onClick={() => handlePayment('CREDIT_CARD')}
-            disabled={loading}
-            className="p-6 rounded-xl border-2 border-gray-200 hover:border-purple-500 transition-all flex flex-col items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:bg-purple-50 min-h-[180px]"
-          >
-            <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-              {loadingMethod === 'CREDIT_CARD' ? (
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
-              ) : (
-                <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              )}
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-800">Credito</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {paymentOptions?.hasPoint ? 'Maquininha' : 'Online'}
-              </p>
-            </div>
-          </button>
-        </div>
-
-        <p className="text-xs text-center text-gray-400 mt-6">
-          Pagamento 100% seguro
-        </p>
       </div>
     </div>
   );

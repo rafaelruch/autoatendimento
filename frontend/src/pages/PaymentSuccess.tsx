@@ -84,29 +84,29 @@ export function PaymentSuccess() {
   const config = statusConfig[status];
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="text-center max-w-md mx-auto px-4">
+    <div className="h-full flex items-center justify-center p-4">
+      <div className="text-center max-w-md mx-auto w-full">
         {/* Status Icon */}
-        <div className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-full ${config.bgColor} flex items-center justify-center`}>
+        <div className={`w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-6 sm:mb-8 rounded-full ${config.bgColor} flex items-center justify-center`}>
           {config.icon}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">
           {config.title}
         </h1>
-        <p className="text-gray-600 mb-8">
+        <p className="text-base sm:text-lg text-gray-600 mb-8 sm:mb-10">
           {config.message}
         </p>
 
         <button
           onClick={config.buttonAction}
-          className="w-full py-4 px-6 rounded-xl text-white text-lg font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-95"
+          className="w-full py-4 sm:py-5 px-6 rounded-xl sm:rounded-2xl text-white text-lg sm:text-xl font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-95"
           style={{ backgroundColor: 'var(--color-primary)' }}
         >
           {config.buttonText}
         </button>
 
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="text-sm text-gray-400 mt-6">
           Redirecionando automaticamente...
         </p>
       </div>
