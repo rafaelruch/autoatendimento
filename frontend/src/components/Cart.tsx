@@ -42,44 +42,44 @@ export function Cart() {
   }
 
   return (
-    <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+    <div className="flex-1 flex flex-col w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg sm:text-xl font-semibold">
+        <h2 className="text-xl sm:text-2xl font-bold">
           Seu Carrinho ({items.length} {items.length === 1 ? 'item' : 'itens'})
         </h2>
         <button
           onClick={clearCart}
-          className="text-red-500 hover:text-red-700 text-sm font-medium py-2 px-3"
+          className="text-red-500 hover:text-red-700 text-base font-semibold py-3 px-4 touch-manipulation active:scale-95"
         >
           Limpar carrinho
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
         {items.map((item) => (
           <CartItem key={item.product.id} item={item} />
         ))}
       </div>
 
-      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
-        <div className="flex justify-between items-center text-lg sm:text-xl font-bold mb-4">
+      <div className="bg-white p-5 sm:p-8 rounded-2xl shadow-xl">
+        <div className="flex justify-between items-center text-2xl sm:text-3xl font-bold mb-6">
           <span>Total:</span>
           <span style={{ color: 'var(--color-primary)' }}>
             R$ {total.toFixed(2).replace('.', ',')}
           </span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Link
             to={`/${slug}/checkout`}
-            className="block w-full text-white text-center font-bold py-4 sm:py-5 rounded-xl transition-colors text-base sm:text-lg btn-primary"
+            className="block w-full text-white text-center font-bold py-5 sm:py-6 rounded-2xl transition-all text-lg sm:text-xl btn-primary active:scale-[0.98] touch-manipulation"
           >
             Finalizar Compra
           </Link>
 
           <Link
             to={`/${slug}`}
-            className="block w-full text-center font-medium py-3 sm:py-4 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            className="block w-full text-center font-semibold py-4 sm:py-5 rounded-2xl border-3 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] touch-manipulation text-base sm:text-lg"
           >
             Continuar Comprando
           </Link>

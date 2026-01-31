@@ -10,8 +10,8 @@ export function CartItem({ item }: CartItemProps) {
   const { product, quantity } = item;
 
   return (
-    <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow">
-      <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+    <div className="flex items-center gap-4 sm:gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
+      <div className="w-24 h-24 sm:w-28 sm:h-28 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
         {product.image ? (
           <img
             src={product.image}
@@ -22,7 +22,7 @@ export function CartItem({ item }: CartItemProps) {
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-8"
+              className="h-12 w-12"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -39,20 +39,20 @@ export function CartItem({ item }: CartItemProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-800 truncate">{product.name}</h3>
-        <p className="font-bold" style={{ color: 'var(--color-primary)' }}>
+        <h3 className="font-semibold text-gray-800 text-base sm:text-lg line-clamp-2">{product.name}</h3>
+        <p className="font-bold text-lg sm:text-xl mt-1" style={{ color: 'var(--color-primary)' }}>
           R$ {product.price.toFixed(2).replace('.', ',')}
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           onClick={() => updateQuantity(product.id, quantity - 1)}
-          className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all touch-manipulation active:scale-90"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
+            className="h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -60,14 +60,14 @@ export function CartItem({ item }: CartItemProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
           </svg>
         </button>
-        <span className="w-8 text-center font-medium">{quantity}</span>
+        <span className="w-10 text-center font-bold text-xl sm:text-2xl">{quantity}</span>
         <button
           onClick={() => updateQuantity(product.id, quantity + 1)}
-          className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all touch-manipulation active:scale-90"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
+            className="h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -78,12 +78,12 @@ export function CartItem({ item }: CartItemProps) {
       </div>
 
       <div className="text-right">
-        <p className="font-bold text-lg">
+        <p className="font-bold text-xl sm:text-2xl">
           R$ {(product.price * quantity).toFixed(2).replace('.', ',')}
         </p>
         <button
           onClick={() => removeItem(product.id)}
-          className="text-red-500 hover:text-red-700 text-sm font-medium"
+          className="text-red-500 hover:text-red-700 text-base font-semibold mt-2 py-2 px-3 touch-manipulation active:scale-95"
         >
           Remover
         </button>

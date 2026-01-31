@@ -15,7 +15,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow touch-manipulation">
       <div className="aspect-square bg-gray-100 relative">
         {product.image ? (
           <img
@@ -27,7 +27,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-16 w-16"
+              className="h-20 w-20"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -42,33 +42,33 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
         {product.stock <= 5 && product.stock > 0 && (
-          <span className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">
-            Últimas unidades
+          <span className="absolute top-2 right-2 bg-yellow-500 text-white text-sm px-3 py-1 rounded-lg font-medium">
+            Ultimas unidades
           </span>
         )}
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-red-600 text-white px-4 py-2 rounded font-bold">
+            <span className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold text-lg">
               Esgotado
             </span>
           </div>
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-4 sm:p-5">
         {product.category && (
           <span
-            className="text-xs font-medium uppercase"
+            className="text-xs sm:text-sm font-medium uppercase"
             style={{ color: 'var(--color-primary)' }}
           >
             {product.category}
           </span>
         )}
-        <h3 className="font-semibold text-gray-800 mt-1 line-clamp-2">
+        <h3 className="font-semibold text-gray-800 mt-1 line-clamp-2 text-base sm:text-lg">
           {product.name}
         </h3>
         <p
-          className="text-2xl font-bold mt-2"
+          className="text-2xl sm:text-3xl font-bold mt-2"
           style={{ color: 'var(--color-primary)' }}
         >
           R$ {product.price.toFixed(2).replace('.', ',')}
@@ -77,9 +77,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <button
           onClick={handleAdd}
           disabled={product.stock === 0}
-          className="w-full mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors btn-primary"
+          className="w-full mt-4 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 sm:py-5 rounded-xl transition-all btn-primary text-base sm:text-lg active:scale-95 touch-manipulation"
         >
-          {product.stock === 0 ? 'Indisponível' : 'Adicionar'}
+          {product.stock === 0 ? 'Indisponivel' : 'Adicionar'}
         </button>
       </div>
     </div>
